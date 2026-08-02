@@ -125,7 +125,13 @@ func (l *Config) connect(ldapAddr string) (ldapConn *ldap.Conn, err error) {
 			// so a server that completes the TCP handshake and never answers
 			// the extended request holds this goroutine forever.
 			ldapConn.SetTimeout(30 * time.Second)
-			err = ldapConn.StartTLS(tlsConfig)
+			if err = ldapConn.StartTLS(tlsConfig); err != nil {
+				// Callers only take ownership of a connection that comes back
+				// without an error, so a failed upgrade has to be closed here
+				// or the socket is left behind on every attempt.
+				ldapConn.Close()
+				return nil, err
+			}
 		}
 	}
 

@@ -7,9 +7,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"errors"
+	"fmt"
 	"io"
 	"math/big"
 	"net"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -39,6 +42,88 @@ func TestConnectNilTLSConfigDoesNotPanic(t *testing.T) {
 		t.Fatalf("unexpected: %v", err)
 	}
 	t.Logf("returned an error instead of panicking: %v", err)
+}
+
+// startTLSRefusal is what a server answers with when it will not upgrade: an
+// extended response carrying a failure result code and nothing else. Encoded by
+// hand so the test needs no BER dependency. Byte 4 is the message ID, which has
+// to be copied from the request or go-ldap ignores the response.
+//
+//	30 0c            SEQUENCE          -- LDAPMessage
+//	   02 01 00      INTEGER           -- messageID
+//	   78 07         [APPLICATION 24]  -- extendedResp
+//	      0a 01 01   ENUMERATED        -- resultCode: operationsError
+//	      04 00      OCTET STRING      -- matchedDN
+//	      04 00      OCTET STRING      -- diagnosticMessage
+var startTLSRefusal = []byte{0x30, 0x0c, 0x02, 0x01, 0x00, 0x78, 0x07, 0x0a, 0x01, 0x01, 0x04, 0x00, 0x04, 0x00}
+
+// A dial failure returns no connection, so a failed StartTLS is the only way
+// connect() can hand back one alongside an error. Callers only take ownership
+// of a connection that arrives without an error, so whatever is left open here
+// is left open for good - once per login attempt.
+//
+// The server declines at the LDAP layer rather than breaking the TLS handshake,
+// and the distinction is what makes the test worth having: go-ldap closes the
+// connection itself when the handshake fails, so that case would pass whether
+// or not connect() does the right thing.
+func TestConnectClosesTheConnectionWhenStartTLSIsRefused(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+
+	serverRead := make(chan error, 1)
+	go func() {
+		c, err := ln.Accept()
+		if err != nil {
+			serverRead <- err
+			return
+		}
+		defer c.Close()
+
+		buf := make([]byte, 4096)
+		c.SetReadDeadline(time.Now().Add(5 * time.Second))
+		n, err := c.Read(buf) // the StartTLS extended request
+		if err != nil {
+			serverRead <- err
+			return
+		}
+		if n < 5 || buf[2] != 0x02 || buf[3] != 0x01 {
+			serverRead <- fmt.Errorf("cannot locate the message ID in %x", buf[:min(8, n)])
+			return
+		}
+		resp := append([]byte(nil), startTLSRefusal...)
+		resp[4] = buf[4]
+		c.Write(resp)
+
+		// The refusal leaves the socket open, so only the client closing it
+		// ends this read. Reaching the deadline means it did not.
+		c.SetReadDeadline(time.Now().Add(5 * time.Second))
+		for {
+			if _, err = c.Read(buf); err != nil {
+				serverRead <- err
+				return
+			}
+		}
+	}()
+
+	l := &Config{
+		Enabled:        true,
+		ServerStartTLS: true,
+		TLS:            &tls.Config{InsecureSkipVerify: true},
+	}
+	conn, err := l.connect(ln.Addr().String())
+	if conn != nil {
+		conn.Close()
+		t.Error("connect returned a live connection alongside an error; callers drop it, so it leaks")
+	}
+	if err == nil {
+		t.Fatal("expected the refused upgrade to surface as an error")
+	}
+	if err := <-serverRead; err == nil || errors.Is(err, os.ErrDeadlineExceeded) {
+		t.Fatalf("the client never closed the connection: %v", err)
+	}
 }
 
 // The ldaps:// path once dialed with no TLS config at all, leaving go-ldap to
