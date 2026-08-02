@@ -2,11 +2,18 @@ GOPATH := $(shell go env GOPATH)
 GOARCH := $(shell go env GOARCH)
 GOOS := $(shell go env GOOS)
 
+# The installer is pinned alongside the version it installs: fetching it from
+# master means every build runs whatever that branch holds today.
+GOLANGCI_VERSION := 2.11.3
+
 all: test
 
 getdeps:
 	@mkdir -p ${GOPATH}/bin
-	@echo "Installing golangci-lint" && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin
+	@if ! ${GOPATH}/bin/golangci-lint --version 2>/dev/null | grep -qF " $(GOLANGCI_VERSION) "; then \
+		echo "Installing golangci-lint v$(GOLANGCI_VERSION)"; \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/v$(GOLANGCI_VERSION)/install.sh | sh -s -- -b $(GOPATH)/bin v$(GOLANGCI_VERSION); \
+	fi
 
 lint: getdeps
 	@echo "Running $@ check"
