@@ -103,7 +103,13 @@ func (l *Config) connect(ldapAddr string) (ldapConn *ldap.Conn, err error) {
 		if err != nil {
 			return nil, err
 		}
+		// Clone returns nil for a nil receiver, and this path is now reached for
+		// plain ldaps:// too, not only for StartTLS as it once was. A Config
+		// that leaves TLS unset would dereference nil on the next line.
 		tlsConfig := l.TLS.Clone()
+		if tlsConfig == nil {
+			tlsConfig = &tls.Config{}
+		}
 		tlsConfig.ServerName = host
 
 		if l.ServerStartTLS {
@@ -113,6 +119,12 @@ func (l *Config) connect(ldapAddr string) (ldapConn *ldap.Conn, err error) {
 		}
 
 		if ldapConn != nil && l.ServerStartTLS {
+			// The timeout has to be armed before StartTLS, not after. go-ldap
+			// starts its request timer only when requestTimeout > 0, and
+			// StartTLS then waits on the response with no deadline of its own,
+			// so a server that completes the TCP handshake and never answers
+			// the extended request holds this goroutine forever.
+			ldapConn.SetTimeout(30 * time.Second)
 			err = ldapConn.StartTLS(tlsConfig)
 		}
 	}
