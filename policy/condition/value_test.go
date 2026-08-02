@@ -259,3 +259,106 @@ func TestValueUnmarshalJSON(t *testing.T) {
 		}
 	}
 }
+
+// TestGetValuesByKeyPrefersExactName pins the lookup order of
+// getValuesByKey(). The map it reads holds two kinds of entries: values the
+// server computed itself, keyed exactly as the condition key names them
+// (SourceIp, SecureTransport, username, ...), and the request's own headers,
+// keyed in canonical MIME form. Looking up the canonical form first lets a
+// client shadow a server-computed value by sending a header whose canonical
+// spelling collides with it -- `Sourceip: 10.0.0.1` overriding the real
+// SourceIp, for instance. The exact name must therefore win, with the
+// canonical form kept only as a fallback for keys that genuinely name a
+// header, such as s3:x-amz-acl.
+func TestGetValuesByKeyPrefersExactName(t *testing.T) {
+	testCases := []struct {
+		name           string
+		key            KeyName
+		values         map[string][]string
+		expectedResult []string
+	}{
+		{
+			name:           "exact name only",
+			key:            AWSSourceIP,
+			values:         map[string][]string{"SourceIp": {"192.168.1.1"}},
+			expectedResult: []string{"192.168.1.1"},
+		},
+		{
+			name:           "canonical form only, for keys that name a header",
+			key:            S3XAmzServerSideEncryption,
+			values:         map[string][]string{"X-Amz-Server-Side-Encryption": {"AES256"}},
+			expectedResult: []string{"AES256"},
+		},
+		{
+			name: "both present, the exact name wins",
+			key:  AWSSourceIP,
+			values: map[string][]string{
+				"SourceIp": {"192.168.1.1"}, // computed by the server
+				"Sourceip": {"10.0.0.1"},    // canonicalised client header
+			},
+			expectedResult: []string{"192.168.1.1"},
+		},
+		{
+			name: "shadowing an identity key",
+			key:  AWSUsername,
+			values: map[string][]string{
+				"username": {"lowpriv"},
+				"Username": {"admin"},
+			},
+			expectedResult: []string{"lowpriv"},
+		},
+		{
+			name: "shadowing the transport key",
+			key:  AWSSecureTransport,
+			values: map[string][]string{
+				"SecureTransport": {"false"},
+				"Securetransport": {"true"},
+			},
+			expectedResult: []string{"false"},
+		},
+		{
+			name: "shadowing a time key",
+			key:  AWSEpochTime,
+			values: map[string][]string{
+				"EpochTime": {"1700000000"},
+				"Epochtime": {"1"},
+			},
+			expectedResult: []string{"1700000000"},
+		},
+		{
+			name:           "absent",
+			key:            AWSSourceIP,
+			values:         map[string][]string{"UserAgent": {"curl"}},
+			expectedResult: nil,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := getValuesByKey(testCase.values, testCase.key.ToKey())
+			if !reflect.DeepEqual(result, testCase.expectedResult) {
+				t.Errorf("key %v: expected %v, got %v", testCase.key, testCase.expectedResult, result)
+			}
+		})
+	}
+}
+
+// TestGetValuesByKeyResolvesTheAppliedValue pins the case that makes the lookup
+// order a correctness question and not only a shadowing one.
+//
+// MinIO's retention path builds the condition map and then overrides the value
+// under the policy key's own spelling with what it is actually about to apply,
+// while the request's own X-Amz-Object-Lock-Mode header sits alongside it under
+// the canonical spelling. Resolving the canonical form first returns the
+// header - so a condition written to constrain the retention being set instead
+// reads a value the caller chose, and the two can disagree.
+func TestGetValuesByKeyResolvesTheAppliedValue(t *testing.T) {
+	values := map[string][]string{
+		"Object-Lock-Mode": {"COMPLIANCE"}, // from the request header
+		"object-lock-mode": {"GOVERNANCE"}, // what the server is applying
+	}
+	got := getValuesByKey(values, S3ObjectLockMode.ToKey())
+	if !reflect.DeepEqual(got, []string{"GOVERNANCE"}) {
+		t.Errorf("expected the applied value [GOVERNANCE], got %v", got)
+	}
+}
