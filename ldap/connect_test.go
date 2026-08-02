@@ -1,6 +1,7 @@
 package ldap
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -42,6 +43,92 @@ func TestConnectNilTLSConfigDoesNotPanic(t *testing.T) {
 		t.Fatalf("unexpected: %v", err)
 	}
 	t.Logf("returned an error instead of panicking: %v", err)
+}
+
+// The two switches MinIO exposes are independent and Validate rejects no
+// combination of them, so all four have to behave. What is asserted is what the
+// server sees on the wire before connect() returns: a TLS ClientHello for
+// ldaps://, a StartTLS extended request when the connection is to be upgraded,
+// and nothing at all only when the caller asked for plain LDAP and no upgrade.
+//
+// The case that regressed was insecure+starttls. Taking the insecure branch
+// first skipped the upgrade, so the bind that follows went out in the clear.
+func TestConnectProtocolSelection(t *testing.T) {
+	const (
+		wantNothing = iota
+		wantStartTLS
+		wantClientHello
+	)
+	for _, tc := range []struct {
+		name               string
+		insecure, starttls bool
+		want               int
+	}{
+		{"ldaps", false, false, wantClientHello},
+		{"starttls", false, true, wantStartTLS},
+		{"insecure", true, false, wantNothing},
+		{"insecure+starttls", true, true, wantStartTLS},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ln, err := net.Listen("tcp", "127.0.0.1:0")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer ln.Close()
+
+			first := make(chan []byte, 1)
+			go func() {
+				c, err := ln.Accept()
+				if err != nil {
+					first <- nil
+					return
+				}
+				defer c.Close()
+				// The upgrade cases end as soon as this read returns and the
+				// deferred close unblocks the client, so their deadline only
+				// bounds a hang. wantNothing has nothing to wait for: there the
+				// deadline is the assertion itself, and a short one keeps the
+				// case from costing whole seconds. Anything the client did send
+				// would have landed on loopback long before it expires.
+				deadline := 2 * time.Second
+				if tc.want == wantNothing {
+					deadline = 500 * time.Millisecond
+				}
+				c.SetReadDeadline(time.Now().Add(deadline))
+				buf := make([]byte, 4096)
+				n, _ := c.Read(buf)
+				first <- buf[:n]
+			}()
+
+			l := &Config{
+				Enabled: true, ServerInsecure: tc.insecure, ServerStartTLS: tc.starttls,
+				TLS: &tls.Config{InsecureSkipVerify: true},
+			}
+			conn, _ := l.connect(ln.Addr().String())
+			got := <-first
+			if conn != nil {
+				conn.Close()
+			}
+
+			switch tc.want {
+			case wantNothing:
+				if len(got) != 0 {
+					t.Errorf("expected nothing on the wire, got %d bytes", len(got))
+				}
+			case wantClientHello:
+				// TLS record: handshake (0x16), version 3.x.
+				if len(got) < 3 || got[0] != 0x16 || got[1] != 0x03 {
+					t.Errorf("expected a TLS ClientHello, got %d bytes %x", len(got), got[:min(8, len(got))])
+				}
+			case wantStartTLS:
+				// LDAP extended request carrying the StartTLS OID.
+				if !bytes.Contains(got, []byte("1.3.6.1.4.1.1466.20037")) {
+					t.Errorf("expected the StartTLS extended request, got %d bytes %x",
+						len(got), got[:min(16, len(got))])
+				}
+			}
+		})
+	}
 }
 
 // startTLSRefusal is what a server answers with when it will not upgrade: an

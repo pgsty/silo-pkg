@@ -91,7 +91,13 @@ func (l *Config) Clone() (cloned Config) {
 }
 
 func (l *Config) connect(ldapAddr string) (ldapConn *ldap.Conn, err error) {
-	if l.ServerInsecure {
+	// StartTLS wins over ServerInsecure when both are set. MinIO exposes the two
+	// as independent switches (MINIO_IDENTITY_LDAP_SERVER_INSECURE and
+	// _SERVER_STARTTLS) and Validate does not reject the combination, so it is
+	// reachable. Both settings dial plain either way; the difference is whether
+	// the connection is then upgraded, and taking the insecure branch first
+	// skips the upgrade and puts the bind credentials on the wire in the clear.
+	if l.ServerInsecure && !l.ServerStartTLS {
 		ldapConn, err = ldap.DialURL("ldap://" + ldapAddr)
 	} else {
 		// We need to fix up the ServerName in the TLS config to match the
