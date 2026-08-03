@@ -20,8 +20,10 @@ package policy
 import (
 	"bytes"
 	"encoding/binary"
+	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/minio/pkg/v3/policy/condition"
 	"github.com/zeebo/xxh3"
@@ -41,6 +43,67 @@ type Statement struct {
 // smallBufPool should always return a non-nil *bytes.Buffer
 var smallBufPool = sync.Pool{
 	New: func() interface{} { return &bytes.Buffer{} },
+}
+
+// legacyBucketResourceMatch, when true, restores the historical behavior in
+// which a bucket-level request (empty object name) is matched against policy
+// resources as "bucket/", so an object-only pattern such as
+// "arn:aws:s3:::bucket/*" also matches bucket-level actions. That behavior
+// over-grants on Allow statements (and over-blocks on Deny statements) and is
+// withheld by default for the sensitive bucket-configuration actions listed in
+// sensitiveBucketMutationActions. It is meant to be configured once at server
+// startup (see SetLegacyBucketResourceMatch) and only read while serving.
+var legacyBucketResourceMatch atomic.Bool
+
+// SetLegacyBucketResourceMatch toggles the compatibility shim documented on
+// legacyBucketResourceMatch. Call it once during startup, before serving
+// requests; it is safe to read concurrently afterwards.
+func SetLegacyBucketResourceMatch(enabled bool) {
+	legacyBucketResourceMatch.Store(enabled)
+}
+
+func init() {
+	// Fork-specific escape hatch: MINIO_API_LEGACY_BUCKET_RESOURCE_MATCH=on,
+	// read once at package initialization, restores the historical bucket
+	// resource matching described on legacyBucketResourceMatch. Kept self
+	// contained here (rather than wired from the server) so the hardening and
+	// its opt-out ship as a single, independently buildable change. Callers may
+	// still override it explicitly via SetLegacyBucketResourceMatch.
+	if os.Getenv("MINIO_API_LEGACY_BUCKET_RESOURCE_MATCH") == "on" {
+		legacyBucketResourceMatch.Store(true)
+	}
+}
+
+// sensitiveBucketMutationActions is the set of bucket-configuration write
+// actions for which an object-only resource pattern ("bucket/*") must not be
+// honored as a bucket-level grant. Each one lets a caller holding only
+// object-scoped access escalate, exfiltrate, or destroy at the bucket level:
+//
+//   - PutBucketPolicy / DeleteBucketPolicy — rewrite or drop the bucket policy,
+//     enabling public exposure, cross-principal grants, or self-escalation;
+//   - PutReplicationConfiguration — replicate the bucket to an attacker target;
+//   - PutBucketLifecycle — schedule mass expiry (data destruction);
+//   - PutBucketVersioning — disable versioning (removes overwrite protection);
+//   - PutBucketObjectLockConfiguration — tamper with WORM retention.
+//
+// The set is deliberately narrow. It excludes the compatibility-sensitive
+// read/list family (ListBucket, GetBucketLocation, ...), which many existing
+// deployments do grant through "bucket/*"; correcting those is left to a
+// future, migration-gated change. See github.com/minio/minio issue #20449.
+var sensitiveBucketMutationActions = map[Action]struct{}{
+	PutBucketPolicyAction:                  {},
+	DeleteBucketPolicyAction:               {},
+	PutReplicationConfigurationAction:      {},
+	PutBucketLifecycleAction:               {},
+	PutBucketObjectLockConfigurationAction: {},
+	PutBucketVersioningAction:              {},
+}
+
+// isSensitiveBucketMutation reports whether action is one of the bucket
+// configuration writes protected from object-only ("bucket/*") grants.
+func isSensitiveBucketMutation(action Action) bool {
+	_, ok := sensitiveBucketMutationActions[action]
+	return ok
 }
 
 // IsAllowed - checks given policy args is allowed to continue the Rest API.
@@ -65,9 +128,27 @@ func (statement Statement) IsAllowedPtr(args *Args) bool {
 				resource.WriteByte('/')
 			}
 			resource.WriteString(args.ObjectName)
-		} else {
+		} else if args.BucketName == "" {
+			// Preserve the "/" sentinel used by KMS two-phase authorization
+			// (empty bucket and empty object), which the isKMS() path below
+			// relies on.
+			resource.WriteByte('/')
+		} else if legacyBucketResourceMatch.Load() ||
+			statement.Effect != Allow ||
+			!isSensitiveBucketMutation(args.Action) {
+			// Append the trailing slash so an object resource pattern such as
+			// "bucket/*" keeps matching this bucket-level request. This is the
+			// historical behavior and is retained for every case except an
+			// Allow statement being evaluated for one of the sensitive
+			// bucket-configuration writes, where honoring "bucket/*" as a
+			// bucket-level grant is a privilege-escalation vector. Deny
+			// statements keep the slash too, so no Deny is ever weakened.
 			resource.WriteByte('/')
 		}
+		// Otherwise (bucket-level Allow request for a sensitive bucket-mutation
+		// action, with the legacy shim off) the resource stays the bare bucket
+		// name, so an object-only pattern ("bucket/*") no longer authorizes it;
+		// bare-bucket and "*" patterns still match.
 
 		if statement.isTable() && !TableAction(args.Action).IsValid() {
 			// When a tables policy statement (for example
