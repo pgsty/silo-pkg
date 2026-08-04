@@ -50,7 +50,7 @@ var smallBufPool = sync.Pool{
 // resources as "bucket/", so an object-only pattern such as
 // "arn:aws:s3:::bucket/*" also matches bucket-level actions. That behavior
 // over-grants on Allow statements (and over-blocks on Deny statements) and is
-// withheld by default for the sensitive bucket-configuration actions listed in
+// withheld by default for the sensitive bucket-level write actions listed in
 // sensitiveBucketMutationActions. It is meant to be configured once at server
 // startup (see SetLegacyBucketResourceMatch) and only read while serving.
 var legacyBucketResourceMatch atomic.Bool
@@ -74,29 +74,49 @@ func init() {
 	}
 }
 
-// sensitiveBucketMutationActions is the set of bucket-configuration write
-// actions for which an object-only resource pattern ("bucket/*") must not be
-// honored as a bucket-level grant. Each one lets a caller holding only
-// object-scoped access escalate, exfiltrate, or destroy at the bucket level:
+// sensitiveBucketMutationActions is the set of bucket-level write actions for
+// which an object-only resource pattern ("bucket/*") must not be honored as a
+// bucket-level grant. Each one lets a caller holding only object-scoped access
+// escalate, exfiltrate, or destroy at the bucket level:
 //
+//   - DeleteBucket / ForceDeleteBucket — remove the bucket itself (the
+//     reproduction reported in upstream minio/minio issue #20449);
 //   - PutBucketPolicy / DeleteBucketPolicy — rewrite or drop the bucket policy,
 //     enabling public exposure, cross-principal grants, or self-escalation;
 //   - PutReplicationConfiguration — replicate the bucket to an attacker target;
 //   - PutBucketLifecycle — schedule mass expiry (data destruction);
 //   - PutBucketVersioning — disable versioning (removes overwrite protection);
-//   - PutBucketObjectLockConfiguration — tamper with WORM retention.
+//   - PutBucketObjectLockConfiguration — tamper with WORM retention;
+//   - PutBucketEncryption — weaken or redirect default encryption;
+//   - PutBucketNotification — point event delivery at an attacker target;
+//   - PutBucketCors / DeleteBucketCors — open the bucket to hostile origins;
+//   - PutBucketTagging — rewrite tags that drive downstream automation;
+//   - PutBucketQOS — throttle the bucket into denial of service;
+//   - PutInventoryConfiguration — ship object inventories to a chosen target.
 //
-// The set is deliberately narrow. It excludes the compatibility-sensitive
-// read/list family (ListBucket, GetBucketLocation, ...), which many existing
-// deployments do grant through "bucket/*"; correcting those is left to a
-// future, migration-gated change. See github.com/minio/minio issue #20449.
+// The set covers every bucket-only S3 write except CreateBucket, which targets
+// a bucket that does not exist yet (nothing to mutate or destroy) and which
+// provisioning flows commonly perform with tenant-scoped ("bucket/*")
+// credentials. The compatibility-sensitive read/list family (ListBucket,
+// GetBucketLocation, ...) is likewise unchanged — many existing deployments do
+// grant those through "bucket/*"; correcting them is left to a future,
+// migration-gated change. See github.com/minio/minio issue #20449.
 var sensitiveBucketMutationActions = map[Action]struct{}{
+	DeleteBucketAction:                     {},
+	ForceDeleteBucketAction:                {},
 	PutBucketPolicyAction:                  {},
 	DeleteBucketPolicyAction:               {},
 	PutReplicationConfigurationAction:      {},
 	PutBucketLifecycleAction:               {},
 	PutBucketObjectLockConfigurationAction: {},
 	PutBucketVersioningAction:              {},
+	PutBucketEncryptionAction:              {},
+	PutBucketNotificationAction:            {},
+	PutBucketCorsAction:                    {},
+	DeleteBucketCorsAction:                 {},
+	PutBucketTaggingAction:                 {},
+	PutBucketQOSAction:                     {},
+	PutInventoryConfigurationAction:        {},
 }
 
 // isSensitiveBucketMutation reports whether action is one of the bucket
@@ -123,6 +143,7 @@ func (statement Statement) IsAllowedPtr(args *Args) bool {
 		defer smallBufPool.Put(resource)
 		resource.Reset()
 		resource.WriteString(args.BucketName)
+		withheldBucketSlash := false
 		if args.ObjectName != "" {
 			if !strings.HasPrefix(args.ObjectName, "/") {
 				resource.WriteByte('/')
@@ -140,15 +161,19 @@ func (statement Statement) IsAllowedPtr(args *Args) bool {
 			// "bucket/*" keeps matching this bucket-level request. This is the
 			// historical behavior and is retained for every case except an
 			// Allow statement being evaluated for one of the sensitive
-			// bucket-configuration writes, where honoring "bucket/*" as a
-			// bucket-level grant is a privilege-escalation vector. Deny
-			// statements keep the slash too, so no Deny is ever weakened.
+			// bucket-level writes, where honoring "bucket/*" as a bucket-level
+			// grant is a privilege-escalation vector. Deny statements keep the
+			// slash too, so no Deny is ever weakened.
 			resource.WriteByte('/')
+		} else {
+			// Bucket-level Allow request for a sensitive bucket-level write,
+			// with the legacy shim off: the resource stays the bare bucket
+			// name, so an object-only pattern ("bucket/*") no longer
+			// authorizes it; bare-bucket and "*" patterns still match. The
+			// omission applies to the Resources grant only — remember it so
+			// the NotResources check below can restore the historical form.
+			withheldBucketSlash = true
 		}
-		// Otherwise (bucket-level Allow request for a sensitive bucket-mutation
-		// action, with the legacy shim off) the resource stays the bare bucket
-		// name, so an object-only pattern ("bucket/*") no longer authorizes it;
-		// bare-bucket and "*" patterns still match.
 
 		if statement.isTable() && !TableAction(args.Action).IsValid() {
 			// When a tables policy statement (for example
@@ -207,6 +232,15 @@ func (statement Statement) IsAllowedPtr(args *Args) bool {
 
 		if !ignoreResourceMatch && len(statement.Resources) > 0 && !statement.Resources.Match(resource.String(), args.ConditionValues) {
 			return false
+		}
+
+		if withheldBucketSlash {
+			// NotResource is an exclusion: matching it against the bare bucket
+			// name would narrow the exclusion — and thereby BROADEN this Allow
+			// statement — for exactly the writes the hardening protects.
+			// Restore the historical trailing slash so every pre-existing
+			// "NotResource: bucket/*" exclusion keeps its full reach.
+			resource.WriteByte('/')
 		}
 
 		if !ignoreResourceMatch && len(statement.NotResources) > 0 && statement.NotResources.Match(resource.String(), args.ConditionValues) {
