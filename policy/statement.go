@@ -76,31 +76,53 @@ func init() {
 
 // sensitiveBucketMutationActions is the set of bucket-level write actions for
 // which an object-only resource pattern ("bucket/*") must not be honored as a
-// bucket-level grant. Each one lets a caller holding only object-scoped access
-// escalate, exfiltrate, or destroy at the bucket level:
+// bucket-level grant.
 //
-//   - DeleteBucket / ForceDeleteBucket — remove the bucket itself (the
-//     reproduction reported in upstream minio/minio issue #20449);
-//   - PutBucketPolicy / DeleteBucketPolicy — rewrite or drop the bucket policy,
-//     enabling public exposure, cross-principal grants, or self-escalation;
-//   - PutReplicationConfiguration — replicate the bucket to an attacker target;
-//   - PutBucketLifecycle — schedule mass expiry (data destruction);
-//   - PutBucketVersioning — disable versioning (removes overwrite protection);
-//   - PutBucketObjectLockConfiguration — tamper with WORM retention;
-//   - PutBucketEncryption — weaken or redirect default encryption;
-//   - PutBucketNotification — point event delivery at an attacker target;
-//   - PutBucketCors / DeleteBucketCors — open the bucket to hostile origins;
-//   - PutBucketTagging — rewrite tags that drive downstream automation;
-//   - PutBucketQOS — throttle the bucket into denial of service;
-//   - PutInventoryConfiguration — ship object inventories to a chosen target.
+// Membership is decided by one question: does reaching this action give the
+// caller something the object-scoped grant does not already give them? The
+// resource bug only fires when the statement grants the bucket-level action in
+// the first place, which in practice means "s3:*" — so the affected principal
+// already holds full read/write/delete over every object in the bucket. An
+// action that merely reconfigures the bucket adds nothing to that position; an
+// action that hands out access, defeats a protection the owner set, or
+// outlives the grant does:
 //
-// The set covers every bucket-only S3 write except CreateBucket, which targets
-// a bucket that does not exist yet (nothing to mutate or destroy) and which
-// provisioning flows commonly perform with tenant-scoped ("bucket/*")
-// credentials. The compatibility-sensitive read/list family (ListBucket,
-// GetBucketLocation, ...) is likewise unchanged — many existing deployments do
-// grant those through "bucket/*"; correcting them is left to a future,
-// migration-gated change. See github.com/minio/minio issue #20449.
+//   - PutBucketPolicy / DeleteBucketPolicy — grant access to other principals,
+//     including anonymous, or grant the caller bucket-level actions it was
+//     never given. Self-escalation and public exposure;
+//   - PutBucketObjectLockConfiguration — defeat WORM retention, which exists
+//     precisely to stop a holder of write access from destroying data;
+//   - PutBucketVersioning — defeat version history, same class of protection;
+//   - PutReplicationConfiguration — copy the bucket to a chosen target under
+//     server credentials, and keep copying after the caller's access is gone;
+//   - PutBucketLifecycle — schedule expiry that likewise outlives the grant;
+//   - DeleteBucket / ForceDeleteBucket — destroy the bucket entity and its
+//     configuration irreversibly. This is the reproduction reported in
+//     upstream minio/minio issue #20449;
+//   - PutBucketCors / DeleteBucketCors / PutBucketQOS /
+//     PutInventoryConfiguration — no MinIO server behavior is attached to
+//     these today (no handler, or a handler that returns NotImplemented after
+//     the authorization check), so withholding them costs nothing and they are
+//     covered in advance should a handler ever be wired.
+//
+// Deliberately NOT protected, and asserted as such by
+// TestStatementBucketMutationDeliberatelyUnprotected:
+//
+//   - PutBucketTagging, PutBucketEncryption, PutBucketNotification — a tenant
+//     handed "s3:*" on "bucket/*" and told the bucket is theirs may legitimately
+//     tag it, set default encryption, or wire event notifications. None of the
+//     three grants the caller access it does not already have; the harm is to
+//     the owner's posture, not to the access boundary. Low security gain against
+//     a real compatibility cost, so they keep the historical matching until a
+//     migration-gated change;
+//   - CreateBucket — targets a bucket that does not exist yet, so there is
+//     nothing to mutate or destroy, and provisioning flows commonly create a
+//     tenant's bucket with that tenant's own "bucket/*" credentials;
+//   - the read/list family (ListBucket, GetBucketLocation, the configuration
+//     reads) — many existing deployments do grant those through "bucket/*",
+//     and breaking them is what got upstream's own attempt reverted.
+//
+// See github.com/minio/minio issue #20449.
 var sensitiveBucketMutationActions = map[Action]struct{}{
 	DeleteBucketAction:                     {},
 	ForceDeleteBucketAction:                {},
@@ -110,11 +132,8 @@ var sensitiveBucketMutationActions = map[Action]struct{}{
 	PutBucketLifecycleAction:               {},
 	PutBucketObjectLockConfigurationAction: {},
 	PutBucketVersioningAction:              {},
-	PutBucketEncryptionAction:              {},
-	PutBucketNotificationAction:            {},
 	PutBucketCorsAction:                    {},
 	DeleteBucketCorsAction:                 {},
-	PutBucketTaggingAction:                 {},
 	PutBucketQOSAction:                     {},
 	PutInventoryConfigurationAction:        {},
 }
@@ -235,12 +254,27 @@ func (statement Statement) IsAllowedPtr(args *Args) bool {
 		}
 
 		if withheldBucketSlash {
-			// NotResource is an exclusion: matching it against the bare bucket
-			// name would narrow the exclusion — and thereby BROADEN this Allow
-			// statement — for exactly the writes the hardening protects.
-			// Restore the historical trailing slash so every pre-existing
-			// "NotResource: bucket/*" exclusion keeps its full reach.
+			// Restore the historical "bucket/" form. It is needed twice below,
+			// and in both cases for the same reason: this hardening must only
+			// ever remove a grant, never create one.
 			resource.WriteByte('/')
+
+			// The bare bucket name is a different string, so a pattern can
+			// match it that did not match "bucket/" — a fixed-width wildcard
+			// such as "mybucke?" matches "mybucket" but not "mybucket/".
+			// Honoring the bare form alone would therefore ADD a grant the
+			// historical matcher refused. Requiring both forms makes the
+			// protected path an intersection with the historical decision, so
+			// it is monotone by construction rather than by argument.
+			if !ignoreResourceMatch && len(statement.Resources) > 0 && !statement.Resources.Match(resource.String(), args.ConditionValues) {
+				return false
+			}
+
+			// NotResource is an exclusion: matching it against the bare bucket
+			// name would narrow the exclusion — and thereby broaden this Allow
+			// statement — for exactly the writes the hardening protects. The
+			// restored form below keeps every pre-existing
+			// "NotResource: bucket/*" exclusion at its full reach.
 		}
 
 		if !ignoreResourceMatch && len(statement.NotResources) > 0 && statement.NotResources.Match(resource.String(), args.ConditionValues) {

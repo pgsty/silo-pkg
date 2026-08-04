@@ -37,13 +37,23 @@ func sensitiveBucketMutationTestActions() []Action {
 		PutBucketLifecycleAction,
 		PutBucketObjectLockConfigurationAction,
 		PutBucketVersioningAction,
-		PutBucketEncryptionAction,
-		PutBucketNotificationAction,
 		PutBucketCorsAction,
 		DeleteBucketCorsAction,
-		PutBucketTaggingAction,
 		PutBucketQOSAction,
 		PutInventoryConfigurationAction,
+	}
+}
+
+// deliberatelyUnprotectedBucketWrites are bucket-level writes that the
+// hardening leaves reachable through an object-only pattern on purpose. None
+// of them grants the caller access it does not already hold via the object
+// grant, while a tenant told "this bucket is yours" may legitimately use them.
+// See the rationale on sensitiveBucketMutationActions.
+func deliberatelyUnprotectedBucketWrites() []Action {
+	return []Action{
+		PutBucketTaggingAction,
+		PutBucketEncryptionAction,
+		PutBucketNotificationAction,
 	}
 }
 
@@ -143,6 +153,30 @@ func TestStatementBucketMutationLegitimateGrantsAllowed(t *testing.T) {
 	}
 }
 
+// Three bucket-level writes are left reachable through an object-only pattern
+// ON PURPOSE, because none of them grants the caller access it does not already
+// hold and each has a plausible legitimate use by a tenant that owns the bucket.
+// This test states that decision so re-adding any of them is a deliberate act
+// with a visible compatibility cost, never an accident.
+func TestStatementBucketMutationDeliberatelyUnprotected(t *testing.T) {
+	SetLegacyBucketResourceMatch(false)
+
+	for _, action := range deliberatelyUnprotectedBucketWrites() {
+		if isSensitiveBucketMutation(action) {
+			t.Fatalf("%v is in the protected set; adding it is a compatibility decision that must be made explicitly, not by editing the set alone", action)
+		}
+		statement := NewStatement("",
+			Allow,
+			NewActionSet(action),
+			NewResourceSet(NewResource("mybucket/*")),
+			condition.NewFunctions(),
+		)
+		if !statement.IsAllowed(Args{Action: action, BucketName: "mybucket"}) {
+			t.Fatalf("%v via mybucket/* must remain allowed (deliberately unprotected)", action)
+		}
+	}
+}
+
 // Non-sensitive bucket-level actions must be UNCHANGED: an object-only pattern
 // still authorizes the compatibility-sensitive read/list family, and — by
 // deliberate decision — CreateBucket, which targets a bucket that does not
@@ -225,6 +259,59 @@ func TestStatementBucketMutationNotResourceExclusionNotWeakened(t *testing.T) {
 		}
 		if !statement.IsAllowed(Args{Action: action, BucketName: "otherbucket"}) {
 			t.Fatalf("Allow with NotResource mybucket/* must still allow %v on other buckets", action)
+		}
+	}
+}
+
+// Withholding the trailing slash changes the string a resource pattern is
+// matched against, and a pattern can match the bare bucket name without having
+// matched the historical "bucket/" form — a fixed-width wildcard is the clean
+// example: "mybucke?" matches "mybucket" but not "mybucket/". Honoring the bare
+// form alone would therefore ADD a grant the historical matcher refused, which
+// is the one thing this hardening must never do. The protected path requires
+// both forms, so no pattern is newly satisfied.
+func TestStatementBucketMutationFixedWidthWildcardNotBroadened(t *testing.T) {
+	SetLegacyBucketResourceMatch(false)
+
+	for _, action := range sensitiveBucketMutationTestActions() {
+		statement := NewStatement("",
+			Allow,
+			NewActionSet(action),
+			NewResourceSet(NewResource("mybucke?")),
+			condition.NewFunctions(),
+		)
+		if statement.IsAllowed(Args{Action: action, BucketName: "mybucket"}) {
+			t.Fatalf("%v on fixed-width wildcard mybucke? must stay denied; it never matched the historical \"mybucket/\" form", action)
+		}
+	}
+
+	// The same pattern keeps its historical meaning everywhere else: it never
+	// authorized these bucket-level requests, and it still does not.
+	listStatement := NewStatement("",
+		Allow,
+		NewActionSet(ListBucketAction),
+		NewResourceSet(NewResource("mybucke?")),
+		condition.NewFunctions(),
+	)
+	if listStatement.IsAllowed(Args{Action: ListBucketAction, BucketName: "mybucket"}) {
+		t.Fatalf("ListBucket on mybucke? was never authorized at bucket level; behavior must be unchanged")
+	}
+}
+
+// A trailing wildcard absorbs the historical slash, so patterns like
+// "mybucket*" matched both forms all along and must keep working.
+func TestStatementBucketMutationTrailingWildcardStillGrants(t *testing.T) {
+	SetLegacyBucketResourceMatch(false)
+
+	for _, action := range sensitiveBucketMutationTestActions() {
+		statement := NewStatement("",
+			Allow,
+			NewActionSet(action),
+			NewResourceSet(NewResource("mybucket*")),
+			condition.NewFunctions(),
+		)
+		if !statement.IsAllowed(Args{Action: action, BucketName: "mybucket"}) {
+			t.Fatalf("%v on mybucket* must remain allowed; the pattern matched the historical form too", action)
 		}
 	}
 }
