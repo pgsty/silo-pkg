@@ -4,7 +4,7 @@ GOOS := $(shell go env GOOS)
 
 # The installer is pinned alongside the version it installs: fetching it from
 # master means every build runs whatever that branch holds today.
-GOLANGCI_VERSION := 2.11.3
+GOLANGCI_VERSION := 2.13.1
 
 all: test
 

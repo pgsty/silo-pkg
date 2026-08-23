@@ -393,13 +393,13 @@ func (l *Config) ValidateLookup(testUsername string) (*UserLookupResult, Validat
 	}
 
 	return &UserLookupResult{
-			DN:                 dnResult.NormDN,
-			DNAttributes:       dnResult.Attributes,
-			GroupDNMemberships: groups,
-		}, Validation{
-			Result: ConfigOk,
-			Detail: "User lookup done.",
-		}
+		DN:                 dnResult.NormDN,
+		DNAttributes:       dnResult.Attributes,
+		GroupDNMemberships: groups,
+	}, Validation{
+		Result: ConfigOk,
+		Detail: "User lookup done.",
+	}
 }
 
 // Splits on given delimiter, trims leading/trailing whitespace and removes
