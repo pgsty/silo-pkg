@@ -13,7 +13,7 @@ keeps working and the fork stays a drop-in replacement. Only the right-hand side
 of the `replace` directive names this repository:
 
 ```
-replace github.com/minio/pkg/v3 => github.com/pgsty/silo-pkg/v3 v3.7.0
+replace github.com/minio/pkg/v3 => github.com/pgsty/silo-pkg/v3 v3.12.0
 ```
 
 The `/v3` suffix is required — it is the module's major version, not a directory.
