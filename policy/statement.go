@@ -572,6 +572,12 @@ func (statement Statement) isValidStrict() error {
 	if err := statement.validateActionTypes(); err != nil {
 		return err
 	}
+	if err := statement.Resources.ValidateStrict(); err != nil {
+		return err
+	}
+	if err := statement.NotResources.ValidateStrict(); err != nil {
+		return err
+	}
 
 	if statement.isAdmin() {
 		return statement.validateAdmin(true)

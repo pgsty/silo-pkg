@@ -86,6 +86,19 @@ type Resource struct {
 	Type    ResourceARNType
 }
 
+// IsBareARN reports whether the resource names an ARN namespace but no
+// resource within it. The exact and historical star-prefixed spellings both
+// normalize to the wildcard type with the ARN prefix as their pattern.
+func (r Resource) IsBareARN() bool {
+	// ARNPrefixToType also contains "*", whose normalized pattern is valid.
+	if r.Type != ResourceARNAll || r.Pattern == ResourceARNAll.String() {
+		return false
+	}
+
+	_, ok := ARNPrefixToType[r.Pattern]
+	return ok
+}
+
 func (r Resource) isKMS() bool {
 	return r.Type == ResourceARNKMS || r.Type == ResourceARNAll
 }

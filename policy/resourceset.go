@@ -150,6 +150,19 @@ func (resourceSet *ResourceSet) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// ValidateStrict rejects resources tolerated only when loading existing
+// policies.
+func (resourceSet ResourceSet) ValidateStrict() error {
+	for resource := range resourceSet {
+		if resource.IsBareARN() {
+			return Errorf("invalid resource '%v' - an ARN prefix with no resource after it does not name a resource; specify a resource, or use '%v*' to mean every resource under that prefix",
+				resource.Pattern, resource.Pattern)
+		}
+	}
+
+	return nil
+}
+
 // ValidateS3 - validates ResourceSet is S3.
 func (resourceSet ResourceSet) ValidateS3() error {
 	for resource := range resourceSet {
