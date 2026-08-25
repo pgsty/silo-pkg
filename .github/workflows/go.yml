@@ -24,14 +24,14 @@ jobs:
       matrix:
         go-version: [1.27.x]
     steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v7
+
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v7
         with:
           go-version: ${{ matrix.go-version }}
         id: go
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v7
 
       # Catches go.mod/go.sum drift, a dependency that starts requiring a newer
       # Go among it. What it cannot catch is this repository's own code reaching
@@ -49,13 +49,13 @@ jobs:
       matrix:
         go-version: [1.26.x]
     steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v7
+
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v7
         with:
           go-version: ${{ matrix.go-version }}
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v7
 
       # The go directive is a promise to consumers, and building it is the only
       # thing that keeps the promise honest. GOTOOLCHAIN=local holds the build
