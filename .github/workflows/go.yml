@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 # This ensures that previous jobs for the PR are canceled when the PR is
 # updated.
