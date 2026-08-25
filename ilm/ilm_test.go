@@ -18,6 +18,7 @@
 package ilm
 
 import (
+	"encoding/xml"
 	"fmt"
 	"strings"
 	"testing"
@@ -151,6 +152,68 @@ func TestOptionFilter(t *testing.T) {
 		t.Run(fmt.Sprintf("Test %d", i+1), func(t *testing.T) {
 			if got := test.opts.Filter(); !filterEq(got, test.want) {
 				t.Fatalf("Expected %#v but got %#v", test.want, got)
+			}
+		})
+	}
+}
+
+func TestLifecycleFilterXMLCompatibility(t *testing.T) {
+	tests := []struct {
+		name          string
+		opts          LifecycleOptions
+		wantFragments []string
+	}{
+		{
+			name: "empty",
+			opts: LifecycleOptions{ExpiryDays: conv.Pointer("30")},
+			wantFragments: []string{
+				"<Filter><Prefix></Prefix></Filter>",
+			},
+		},
+		{
+			name: "prefix",
+			opts: LifecycleOptions{
+				Prefix:     conv.Pointer("doc/"),
+				ExpiryDays: conv.Pointer("30"),
+			},
+			wantFragments: []string{
+				"<Filter><Prefix>doc/</Prefix></Filter>",
+			},
+		},
+		{
+			name: "and",
+			opts: LifecycleOptions{
+				Prefix:     conv.Pointer("doc/"),
+				Tags:       conv.Pointer("key1=value1"),
+				ExpiryDays: conv.Pointer("30"),
+			},
+			wantFragments: []string{
+				"<Filter><And>",
+				"<Prefix>doc/</Prefix>",
+				"<Tag><Key>key1</Key><Value>value1</Value></Tag>",
+				"</And></Filter>",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			rule, err := test.opts.ToILMRule()
+			if err != nil {
+				t.Fatal(err)
+			}
+			encoded, err := xml.Marshal(rule)
+			if err != nil {
+				t.Fatal(err)
+			}
+			document := string(encoded)
+			if count := strings.Count(document, "<Filter>"); count != 1 {
+				t.Fatalf("lifecycle XML contains %d Filter elements: %s", count, document)
+			}
+			for _, fragment := range test.wantFragments {
+				if !strings.Contains(document, fragment) {
+					t.Fatalf("lifecycle XML does not contain %q: %s", fragment, document)
+				}
 			}
 		})
 	}
