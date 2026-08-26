@@ -10,11 +10,19 @@ closed product, will not carry.
 The module path is deliberately **unchanged**. This repository still declares
 `module github.com/minio/pkg/v3`, so every `import "github.com/minio/pkg/v3/..."`
 keeps working and the fork stays a drop-in replacement. Only the right-hand side
-of the `replace` directive names this repository:
+of each `replace` directive names the maintained repository:
 
+```go
+replace (
+	github.com/minio/pkg/v3 => github.com/pgsty/silo-pkg/v3 v3.12.2
+	github.com/minio/minio-go/v7 => github.com/pgsty/silo-go/v7 v7.3.1
+)
 ```
-replace github.com/minio/pkg/v3 => github.com/pgsty/silo-pkg/v3 v3.12.1
-```
+
+The second replacement selects the Silo Go SDK used by this package. Go does
+not inherit `replace` directives from dependency modules, so top-level
+consumers that want the complete maintained stack must declare both
+replacements in their own `go.mod`.
 
 The `/v3` suffix is required — it is the module's major version, not a directory.
 

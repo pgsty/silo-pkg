@@ -6,6 +6,11 @@ go 1.26.0
 
 toolchain go1.27.0
 
+// Use PGSTY's maintained Silo Go SDK while preserving upstream import paths.
+// Keep the required version on a real upstream tag because replace directives
+// are ignored when this module is consumed as a dependency.
+replace github.com/minio/minio-go/v7 => github.com/pgsty/silo-go/v7 v7.3.1
+
 // v22.7.0 does not compile on NetBSD because its unix implementation uses
 // CLOCK_MONOTONIC, which is unavailable there. Keep the last portable release
 // until go-systemd ships the upstream fix.
