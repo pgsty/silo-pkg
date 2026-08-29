@@ -165,3 +165,59 @@ func TestGetEnv(t *testing.T) {
 		t.Fatalf("Expected 'value-new', but got %s", v)
 	}
 }
+
+func TestLookupEnvOnlyTreatsExactRemoteSchemes(t *testing.T) {
+	const key = "MINIO_ARGS"
+
+	for _, value := range []string{
+		"envreview",
+		"environment",
+		"env:relative",
+		"env+tls-not-a-url",
+		"env+tls:relative",
+		"ENV://user:password@example.com/path",
+		" env://user:password@example.com/path",
+	} {
+		t.Run(value, func(t *testing.T) {
+			t.Setenv(key, value)
+			got, user, password, err := LookupEnv(key)
+			if err != nil {
+				t.Fatalf("LookupEnv(%q) returned error: %v", value, err)
+			}
+			if got != value || user != "" || password != "" {
+				t.Fatalf("LookupEnv(%q) = (%q, %q, %q), want the literal value and no credentials", value, got, user, password)
+			}
+		})
+	}
+
+	t.Setenv("_"+key, "cached")
+	t.Setenv(key, "envreview")
+	got, user, password, err := LookupEnv(key)
+	if err != nil || got != "envreview" || user != "" || password != "" {
+		t.Fatalf("literal value with a cache = (%q, %q, %q, %v)", got, user, password, err)
+	}
+
+	t.Setenv("_"+key, "")
+	secureRemote := "env+tls://user:password@127.0.0.1:1/webhook/v1/getenv/default/minio"
+	t.Setenv(key, secureRemote)
+	got, _, _, err = LookupEnv(key)
+	if got == secureRemote {
+		t.Fatalf("LookupEnv(%q) = (%q, %v), want remote routing rather than the literal value", secureRemote, got, err)
+	}
+
+	ts := startTestServer(t)
+	u, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := fmt.Sprintf("env://minio:minio123@%s/webhook/v1/getenv/default/minio", u.Host)
+	t.Setenv("_"+key, "")
+	t.Setenv(key, remote)
+	got, user, password, err = LookupEnv(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "http://127.0.0.{1..4}:9000/data{1...4}" || user != "minio" || password != "minio123" {
+		t.Fatalf("LookupEnv(remote) = (%q, %q, %q)", got, user, password)
+	}
+}
