@@ -177,7 +177,7 @@ func Environ() []string {
 // credentials.
 func LookupEnv(key string) (string, string, string, error) {
 	v, ok := os.LookupEnv(key)
-	if ok && strings.HasPrefix(v, webEnvScheme) {
+	if ok && (strings.HasPrefix(v, webEnvScheme+"://") || strings.HasPrefix(v, webEnvSchemeSecure+"://")) {
 		// If env value starts with `env*://`
 		// continue to parse and fetch from remote
 		var err error
