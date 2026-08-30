@@ -100,10 +100,10 @@ github.com/mattn/go-runewidth v0.0.23 h1:7ykA0T0jkPpzSvMS5i9uoNn2Xy3R383f9HDx3Ry
 github.com/mattn/go-runewidth v0.0.23/go.mod h1:XBkDxAl56ILZc9knddidhrOlY5R/pDhgLpndooCuJAs=
 github.com/minio/md5-simd v1.1.2 h1:Gdi1DZK69+ZVMoNHRXJyNcxrMA4dSxoYHZSQbirFg34=
 github.com/minio/md5-simd v1.1.2/go.mod h1:MzdKDxYpY2BT9XQFocsiZf/NKVtR7nkE4RoEpN+20RM=
+github.com/minio/minio-go/v7 v7.3.1-0.20260828014306-0e78d3f18efe h1:By2FKNSOUGLOeb0x4D7xJMHr8x/X1ZW8PG780SpKUwQ=
+github.com/minio/minio-go/v7 v7.3.1-0.20260828014306-0e78d3f18efe/go.mod h1:KUPWdecEO1LWyUz+sTGXAuf2jZHrPh5fCsRH86QbPfk=
 github.com/minio/mux v1.9.2 h1:dQchne49BUBgOlxIHjx5wVe1gl5VXF2sxd4YCXkikTw=
 github.com/minio/mux v1.9.2/go.mod h1:OuHAsZsux+e562bcO2P3Zv/P0LMo6fPQ310SmoyG7mQ=
-github.com/pgsty/silo-go/v7 v7.3.1 h1:CchXB5hdv1KGUCGBzR5Tz8hSE+3P9sGJFPY+ku8tC04=
-github.com/pgsty/silo-go/v7 v7.3.1/go.mod h1:3uUcXVLE1xLBTy+A/js/hHKkvcYQ/zMbj8rbtNQavxE=
 github.com/philhofer/fwd v1.2.0 h1:e6DnBTl7vGY+Gz322/ASL4Gyp1FspeMvx1RNDoToZuM=
 github.com/philhofer/fwd v1.2.0/go.mod h1:RqIHx9QI14HlwKwm98g9Re5prTQ6LdeRQn+gXJFxsJM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=

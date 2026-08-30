@@ -22,7 +22,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/minio/pkg/v3/rng"
+	"github.com/pgsty/silo-pkg/v3/rng"
 )
 
 // New returns an infinite reader that will return pseudo-random data.

@@ -23,7 +23,7 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/minio/pkg/v3/sys/cgroup"
+	"github.com/pgsty/silo-pkg/v3/sys/cgroup"
 )
 
 // Get the final system memory limit chosen by the user.

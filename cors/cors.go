@@ -24,7 +24,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/minio/pkg/v3/wildcard"
+	"github.com/pgsty/silo-pkg/v3/wildcard"
 )
 
 const defaultXMLNS = "http://s3.amazonaws.com/doc/2006-03-01/"
