@@ -7,10 +7,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# This ensures that previous jobs for the PR are canceled when the PR is
-# updated.
+# Cancel a superseded run for the same pull request or branch. github.head_ref
+# is only set on pull_request events, so keying on it alone put every push and
+# manual run in one group, where they cancelled each other.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
