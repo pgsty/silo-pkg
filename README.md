@@ -7,24 +7,26 @@ closed product, will not carry.
 
 ## Using it
 
-The module path is deliberately **unchanged**. This repository still declares
-`module github.com/minio/pkg/v3`, so every `import "github.com/minio/pkg/v3/..."`
-keeps working and the fork stays a drop-in replacement. Only the right-hand side
-of each `replace` directive names the maintained repository:
+Import it directly. This repository declares `module github.com/pgsty/silo-pkg/v3`,
+so a consumer requires it by name and needs no `replace` directive:
 
 ```go
-replace (
-	github.com/minio/pkg/v3 => github.com/pgsty/silo-pkg/v3 v3.12.2
-	github.com/minio/minio-go/v7 => github.com/pgsty/silo-go/v7 v7.3.1
-)
+require github.com/pgsty/silo-pkg/v3 v3.13.0
 ```
 
-The second replacement selects the Silo Go SDK used by this package. Go does
-not inherit `replace` directives from dependency modules, so top-level
-consumers that want the complete maintained stack must declare both
-replacements in their own `go.mod`.
+```go
+import "github.com/pgsty/silo-pkg/v3/policy"
+```
 
 The `/v3` suffix is required — it is the module's major version, not a directory.
+
+Through v3.12.2 the module kept upstream's `github.com/minio/pkg/v3` path and was
+selected with a `replace` directive. That worked, but Go does not inherit `replace`
+directives from dependency modules, so every consumer had to repeat the redirect,
+and the `require` line had to name an upstream version this fork's source no longer
+matched. v3.13.0 owns its path instead. Consumers still on the old arrangement keep
+building against the versions they already pinned; to move, drop the `replace`,
+require this path, and rewrite the imports.
 
 The repository was renamed from `pgsty/minio-pkg` on 2026-08-02. GitHub redirects
 the old path, but pin the new one.

@@ -18,8 +18,8 @@
 package policy
 
 import (
-	"github.com/minio/pkg/v3/policy/condition"
-	"github.com/minio/pkg/v3/wildcard"
+	"github.com/pgsty/silo-pkg/v3/policy/condition"
+	"github.com/pgsty/silo-pkg/v3/wildcard"
 )
 
 // AdminAction - admin policy action.
