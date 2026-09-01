@@ -11,7 +11,7 @@ Import it directly. This repository declares `module github.com/pgsty/silo-pkg/v
 so a consumer requires it by name and needs no `replace` directive:
 
 ```go
-require github.com/pgsty/silo-pkg/v3 v3.13.1
+require github.com/pgsty/silo-pkg/v3 v3.13.0
 ```
 
 ```go
@@ -24,7 +24,7 @@ Through v3.12.2 the module kept upstream's `github.com/minio/pkg/v3` path and wa
 selected with a `replace` directive. That worked, but Go does not inherit `replace`
 directives from dependency modules, so every consumer had to repeat the redirect,
 and the `require` line had to name an upstream version this fork's source no longer
-matched. v3.13.0 and later own the path instead. Consumers still on the old arrangement keep
+matched. v3.13.0 owns its path instead. Consumers still on the old arrangement keep
 building against the versions they already pinned; to move, drop the `replace`,
 require this path, and rewrite the imports.
 
