@@ -39,7 +39,14 @@ that only serves the closed product, and carries fixes upstream has not taken.
 Read the tag annotation before upgrading — some releases have to be taken
 together with a matching MinIO server change, and say so.
 
+## Contributing
+
+Submit issues and pull requests to [pgsty/silo-pkg](https://github.com/pgsty/silo-pkg).
+Code contributions use AGPL-3.0-or-later, the same license as this package.
+Contributors retain their copyright; no CLA or separate Apache-2.0 license grant
+is required. Sign commits with `git commit -s`; see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
-Use of this package is governed by the GNU AGPLv3 license that can be found in
+Use of this package is governed by the GNU AGPL v3.0 or later license in
 the [LICENSE](./LICENSE) file.
