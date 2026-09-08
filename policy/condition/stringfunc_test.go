@@ -25,6 +25,32 @@ import (
 	"github.com/minio/minio-go/v7/pkg/set"
 )
 
+func TestStringFuncValueBoundaries(t *testing.T) {
+	for _, tc := range []struct {
+		left, right []string
+		equal       bool
+	}{
+		{[]string{"a b"}, []string{"a", "b"}, false},
+		{[]string{"a b", "c"}, []string{"a", "b c"}, false},
+		{[]string{"", "a"}, []string{" a"}, false},
+		{[]string{`a" "b`}, []string{"a", "b"}, false},
+		{[]string{`a\nb`}, []string{"a\nb"}, false},
+		{[]string{"a b", "c"}, []string{"c", "a b"}, true},
+	} {
+		left, err := NewStringEqualsFunc("", S3Prefix.ToKey(), tc.left...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		right, err := NewStringEqualsFunc("", S3Prefix.ToKey(), tc.right...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := NewFunctions(left).Equals(NewFunctions(right)); got != tc.equal {
+			t.Errorf("condition values %q and %q: Equals = %v, want %v", tc.left, tc.right, got, tc.equal)
+		}
+	}
+}
+
 func TestStringEqualsFuncEvaluate(t *testing.T) {
 	case1Function, err := newStringEqualsFunc(S3XAmzCopySource.ToKey(), NewValueSet(NewStringValue("mybucket/myobject")), "")
 	if err != nil {
