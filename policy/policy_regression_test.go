@@ -75,3 +75,42 @@ func TestMergePoliciesPreservesNotResourceDenies(t *testing.T) {
 		}
 	}
 }
+
+func TestHasDenyStatementWithoutParsing(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		effects []Effect
+		want    bool
+	}{
+		{"empty", nil, false},
+		{"allow", []Effect{Allow}, false},
+		{"deny", []Effect{Deny}, true},
+		{"allow-then-deny", []Effect{Allow, Deny}, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			p := Policy{Version: DefaultVersion}
+			for _, effect := range tt.effects {
+				p.Statements = append(p.Statements, Statement{
+					Effect: effect, Actions: NewActionSet(GetObjectAction),
+					Resources: NewResourceSet(NewResource("*")),
+				})
+			}
+			if got := p.HasDenyStatement(); got != tt.want {
+				t.Errorf("HasDenyStatement() = %v, want %v", got, tt.want)
+			}
+			p.updateActionIndex()
+			if got := p.HasDenyStatement(); got != tt.want {
+				t.Errorf("indexed HasDenyStatement() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+	for _, p := range DefaultPolicies {
+		if p.Name == "readonly" {
+			if !p.Definition.HasDenyStatement() {
+				t.Error("readonly's explicit Deny must be reported before parsing")
+			}
+			return
+		}
+	}
+	t.Fatal("readonly policy not found")
+}
