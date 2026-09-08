@@ -127,7 +127,16 @@ type Policy struct {
 
 // HasDenyStatement returns if the policy has a deny statement.
 func (iamp *Policy) HasDenyStatement() bool {
-	return iamp.hasDeny
+	if iamp.hasDeny {
+		return true
+	}
+	// Directly constructed policies have not populated the cached flag.
+	for i := range iamp.Statements {
+		if iamp.Statements[i].Effect == Deny {
+			return true
+		}
+	}
+	return false
 }
 
 // MatchResource matches resource with match resource patterns

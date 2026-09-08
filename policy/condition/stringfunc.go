@@ -82,7 +82,8 @@ func (f stringFunc) name() name {
 func (f stringFunc) String() string {
 	valueStrings := f.values.ToSlice()
 	sort.Strings(valueStrings)
-	return fmt.Sprintf("%v:%v:%v", f.n, f.k, valueStrings)
+	// Equality and statement hashing use this representation; preserve value boundaries.
+	return fmt.Sprintf("%v:%v:%q", f.n, f.k, valueStrings)
 }
 
 func (f stringFunc) toMap() map[Key]ValueSet {

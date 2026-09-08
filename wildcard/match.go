@@ -17,15 +17,12 @@
 
 package wildcard
 
-import (
-	"cmp"
-	"strings"
-)
+import "strings"
 
 // MatchSimple - finds whether the text matches/satisfies the pattern string.
 // supports '*' wildcard in the pattern and ? for single characters.
-// Only difference to Match is that `?` at the end is optional,
-// meaning `a?` pattern will match name `a`.
+// Unlike Match, reaching '?' after name is exhausted accepts the rest of the
+// pattern. For example, both "a?" and "a?b" match "a".
 func MatchSimple(pattern, name string) bool {
 	if pattern == "" {
 		return name == pattern
@@ -33,7 +30,6 @@ func MatchSimple(pattern, name string) bool {
 	if pattern == "*" {
 		return true
 	}
-	// Do an extended wildcard '*' and '?' match.
 	return deepMatchRune(name, pattern, true)
 }
 
@@ -54,29 +50,73 @@ func Match(pattern, name string) (matched bool) {
 
 // Has returns true if the input pattern has a wildcard (pattern).
 func Has(pattern string) bool {
-	return cmp.Or(strings.Contains(pattern, "*"), strings.Contains(pattern, "?"))
+	return strings.ContainsAny(pattern, "*?")
 }
 
+// Keep one backtracking point instead of recursively exploring both
+// alternatives for every '*'.
 func deepMatchRune(str, pattern string, simple bool) bool {
-	for len(pattern) > 0 {
-		switch pattern[0] {
-		default:
-			if len(str) == 0 || str[0] != pattern[0] {
-				return false
+	var s, p int
+	// Position of the '*' to resume from, and how much of str it has consumed.
+	star, mark := -1, 0
+	for s < len(str) || p < len(pattern) {
+		if p < len(pattern) {
+			switch pattern[p] {
+			case '*':
+				star, mark = p, s
+				p++
+				if p == len(pattern) {
+					return true
+				}
+				if simple {
+					// Before a later '*' replaces this one, check whether its
+					// star-free segment can reach '?' with the name exhausted.
+					for end := p; end < len(pattern) && pattern[end] != '*' && end-p <= len(str)-s; end++ {
+						if pattern[end] == '?' && matchFixedSuffix(str[s:], pattern[p:end]) {
+							return true
+						}
+					}
+				}
+				continue
+			case '?':
+				if simple && s == len(str) {
+					return true
+				}
+				if s < len(str) {
+					s++
+					p++
+					continue
+				}
+			default:
+				if s < len(str) && pattern[p] == str[s] {
+					s++
+					p++
+					continue
+				}
 			}
-		case '?':
-			if len(str) == 0 {
-				return simple
-			}
-		case '*':
-			return len(pattern) == 1 || // Pattern ends with this star
-				deepMatchRune(str, pattern[1:], simple) || // Matches next part of pattern
-				(len(str) > 0 && deepMatchRune(str[1:], pattern, simple)) // Continue searching forward
 		}
-		str = str[1:]
-		pattern = pattern[1:]
+		if star < 0 {
+			return false
+		}
+		// Let the last '*' swallow one more byte and retry from there.
+		mark++
+		if mark > len(str) {
+			return false
+		}
+		s, p = mark, star+1
 	}
-	return len(str) == 0 && len(pattern) == 0
+	return true
+}
+
+// matchFixedSuffix checks a star-free pattern already known to fit in str.
+func matchFixedSuffix(str, pattern string) bool {
+	str = str[len(str)-len(pattern):]
+	for i := len(pattern) - 1; i >= 0; i-- {
+		if pattern[i] != '?' && pattern[i] != str[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // MatchAsPatternPrefix matches text as a prefix of the given pattern. Examples:

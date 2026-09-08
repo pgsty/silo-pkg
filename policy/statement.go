@@ -731,6 +731,11 @@ func (statement Statement) hash(seed uint64) [16]byte {
 		xorTo(&h, xxh3.HashString128Seed(res.Pattern+res.Type.String(), seed+6))
 	}
 
+	xorInt(&h, len(statement.NotResources), seed+9)
+	for res := range statement.NotResources {
+		xorTo(&h, xxh3.HashString128Seed(res.Pattern+res.Type.String(), seed+10))
+	}
+
 	xorInt(&h, len(statement.Conditions), seed+7)
 	for _, cond := range statement.Conditions {
 		xorTo(&h, xxh3.HashString128Seed(cond.String(), seed+8))
