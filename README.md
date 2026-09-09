@@ -31,6 +31,27 @@ require this path, and rewrite the imports.
 The repository was renamed from `pgsty/minio-pkg` on 2026-08-02. GitHub redirects
 the old path, but pin the new one.
 
+## Go and TLS compatibility
+
+The library retains its Go 1.26 floor and is also tested with Go 1.27. Runtime
+defaults depend on the consuming application's Go version and `GODEBUG`, not
+just this library's `go.mod`. The web-environment client leaves TLS key exchange
+at Go defaults; LDAP and OIDC helpers also preserve caller-supplied TLS settings.
+For default-configured TLS, `GODEBUG=tlsmlkem=0` disables hybrid key exchanges;
+`GODEBUG=tlssecpmlkem=0` disables only the SecP hybrids and retains X25519MLKEM768.
+These settings preserve certificate verification.
+
+On macOS, applications targeting Go 1.27 replace Keychain trust with on-disk
+roots and Go's verifier when either `SSL_CERT_FILE` or `SSL_CERT_DIR` is set.
+Stale or incomplete CA paths can break previously trusted connections; unset
+inherited values to restore Keychain trust. Explicit CAs supplied to
+`certs.GetRootCAs` remain additive to the selected root pool.
+An application still targeting Go 1.26 retains the
+old platform default unless it opts in with
+`GODEBUG=x509sslcertoverrideplatform=1`. The Windows loader in this package reads
+the Windows ROOT store directly and is unchanged. See the
+[Go release notes](https://go.dev/doc/go1.27).
+
 ## Versioning
 
 Tags follow upstream's numbering so it is obvious which release a version is
