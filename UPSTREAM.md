@@ -20,10 +20,36 @@ and `minio/minio-go` through
   streaming SignedHeaders ([#2301](https://github.com/minio/minio-go/pull/2301))
   and caller TLS trust on RDMA ([#2302](https://github.com/minio/minio-go/pull/2302)).
 
-Password authorization must be deployed with the matching SILO Server and
-Console changes. See the Server's `docs/iam/password-permissions.md` for old
-policy behavior and migration. No public API or Go compatibility floor changes
-are required by these package changes.
+## Breaking authorization compatibility
+
+Adopting #262 changes existing policy semantics; it is independent of updating
+the minio-go SDK. This must be disclosed as a breaking change in the release
+that includes it. The Go signatures and Go compatibility floor are unchanged,
+but the public `Policy.IsAllowedActions` method returns different capabilities:
+ChangeMyPassword is implicit unless denied, and CreateUser requires an explicit
+Allow. Consumers must use the matching capability for each operation.
+
+With the matching Server change, a saved `Deny admin:CreateUser` no longer
+prevents the caller from changing their own password. A saved
+`Deny admin:ChangeMyPassword` now prevents it. To preserve a policy's old
+combined restriction, add ChangeMyPassword to the same CreateUser Deny statement
+before upgrading, preserving its other actions, scope and conditions. Saved
+policy documents are not rewritten automatically.
+
+The built-in `readonly` policy also drops its old CreateUser deny. It now allows
+self-service password changes, and a separate CreateUser Allow can grant user
+administration where the old built-in deny overrode it. Saved overrides retain
+their existing deny; inspect the effective policy contents. `consolereadonly`
+is new and follows the split. Neither read-only policy grants user
+administration on its own.
+
+Deploy password authorization with the matching SILO Server and Console.
+During a mixed-version rollout or rollback, retain both denies if the old
+combined restriction must hold: an old Server does not enforce a password-only
+deny for this endpoint. See the Server's
+[password-permission migration guide](https://github.com/pgsty/silo/blob/420340bc142b7dec00c26c28dd78102e3ed9d0f3/docs/iam/password-permissions.md)
+for the before/after matrix, policy migration, read-only composition and
+rollback limits.
 
 ## Already covered or deferred
 
