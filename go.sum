@@ -97,8 +97,8 @@ github.com/mattn/go-runewidth v0.0.29 h1:3oGF3R/S2N9DQ3ptftzVIvg2eicmojCzlwBEmqE
 github.com/mattn/go-runewidth v0.0.29/go.mod h1:3qAiGCV4Koz/yuveO58qUefmUTRm8r0IGEXZ9jeHp/8=
 github.com/minio/md5-simd v1.1.2 h1:Gdi1DZK69+ZVMoNHRXJyNcxrMA4dSxoYHZSQbirFg34=
 github.com/minio/md5-simd v1.1.2/go.mod h1:MzdKDxYpY2BT9XQFocsiZf/NKVtR7nkE4RoEpN+20RM=
-github.com/minio/minio-go/v7 v7.3.1-0.20260828014306-0e78d3f18efe h1:By2FKNSOUGLOeb0x4D7xJMHr8x/X1ZW8PG780SpKUwQ=
-github.com/minio/minio-go/v7 v7.3.1-0.20260828014306-0e78d3f18efe/go.mod h1:KUPWdecEO1LWyUz+sTGXAuf2jZHrPh5fCsRH86QbPfk=
+github.com/minio/minio-go/v7 v7.3.1-0.20260909183557-78bfa91607c2 h1:nvX7IksPFOF/cBvkSg/Z+urBZkmhZrfUVmzdNFLjZ5Y=
+github.com/minio/minio-go/v7 v7.3.1-0.20260909183557-78bfa91607c2/go.mod h1:KUPWdecEO1LWyUz+sTGXAuf2jZHrPh5fCsRH86QbPfk=
 github.com/minio/mux v1.10.1 h1:grrK8SwRKbkNFE6qG7WAvFGH09bB46d5teOOtKfQ14s=
 github.com/minio/mux v1.10.1/go.mod h1:INYT4sMSTJy0QWUEA/E2DZNxJ5sAxIwbnyZjkzNFRfE=
 github.com/philhofer/fwd v1.2.0 h1:e6DnBTl7vGY+Gz322/ASL4Gyp1FspeMvx1RNDoToZuM=

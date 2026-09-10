@@ -169,9 +169,8 @@ func (iamp Policy) IsAllowedActions(bucketName, objectName string, conditionValu
 			ObjectName:      objectName,
 			Action:          admAction,
 			ConditionValues: conditionValues,
-			// checks mainly for actions that can have explicit
-			// deny, while without it are implicitly enabled.
-			DenyOnly: action == CreateServiceAccountAdminAction || action == CreateUserAdminAction,
+			// Match the server's implicit grants for self-service actions.
+			DenyOnly: action == CreateServiceAccountAdminAction || action == ChangeMyPasswordAdminAction,
 		}) {
 			actionSet.Add(admAction)
 		}

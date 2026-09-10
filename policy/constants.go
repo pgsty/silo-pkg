@@ -60,10 +60,20 @@ var DefaultPolicies = []struct {
 					Actions:   NewActionSet(GetBucketLocationAction, GetObjectAction),
 					Resources: NewResourceSet(NewResource("*")),
 				},
+			},
+		},
+	},
+
+	// ConsoleReadOnly - read only with ListBucket for console browsing.
+	{
+		Name: "consolereadonly",
+		Definition: Policy{
+			Version: DefaultVersion,
+			Statements: []Statement{
 				{
 					SID:       ID(""),
-					Effect:    Deny,
-					Actions:   NewActionSet(CreateUserAdminAction),
+					Effect:    Allow,
+					Actions:   NewActionSet(GetBucketLocationAction, GetObjectAction, ListBucketAction),
 					Resources: NewResourceSet(NewResource("*")),
 				},
 			},
