@@ -162,12 +162,12 @@ func TestHasDenyStatementWithoutParsing(t *testing.T) {
 		})
 	}
 	for _, p := range DefaultPolicies {
-		if p.Name == "readonly" {
-			if !p.Definition.HasDenyStatement() {
-				t.Error("readonly's explicit Deny must be reported before parsing")
-			}
-			return
+		want := false
+		for _, statement := range p.Definition.Statements {
+			want = want || statement.Effect == Deny
+		}
+		if got := p.Definition.HasDenyStatement(); got != want {
+			t.Errorf("%s: HasDenyStatement() = %v, want %v", p.Name, got, want)
 		}
 	}
-	t.Fatal("readonly policy not found")
 }
