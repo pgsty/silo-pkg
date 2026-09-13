@@ -11,7 +11,7 @@ Import it directly. This repository declares `module github.com/pgsty/silo-pkg/v
 so a consumer requires it by name and needs no `replace` directive:
 
 ```go
-require github.com/pgsty/silo-pkg/v3 v3.13.2
+require github.com/pgsty/silo-pkg/v3 v3.14.0
 ```
 
 ```go
@@ -54,11 +54,13 @@ the Windows ROOT store directly and is unchanged. See the
 
 ## Versioning
 
-Tags follow upstream's numbering so it is obvious which release a version is
-based on. They do not promise identical contents: this fork skips upstream work
-that only serves the closed product, and carries fixes upstream has not taken.
-Read the tag annotation before upgrading — some releases have to be taken
-together with a matching MinIO server change, and say so.
+SILO versions are released independently of upstream. Read the release notes
+before upgrading: changes to shared policy behavior must be adopted together
+with the matching SILO server, Console and mcli changes.
+
+Version 3.14.0 separates self-service password changes from user administration.
+Review the [password authorization migration](UPSTREAM.md#breaking-authorization-compatibility)
+when upgrading policies that deny `admin:CreateUser` or `admin:ChangeMyPassword`.
 
 ## Contributing
 

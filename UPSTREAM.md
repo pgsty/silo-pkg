@@ -1,9 +1,9 @@
-# Upstream review: 2026-09-10
+# Upstream review: 2026-09-13
 
 Reviewed `minio/pkg` through
 [`657d87e88168`](https://github.com/minio/pkg/commit/657d87e881680db68e3a9f9286569788651c968e)
 and `minio/minio-go` through
-[`78bfa91607c2`](https://github.com/minio/minio-go/commit/78bfa91607c2b9a7eb1ad5fe739de3c6c238d5ab).
+[`60bd07042d49`](https://github.com/minio/minio-go/commit/60bd07042d49a40c4155d3fbde3d390f39867a1e).
 
 ## Adopted
 
@@ -14,11 +14,13 @@ and `minio/minio-go` through
 - [pkg #233](https://github.com/minio/pkg/pull/233): add `consolereadonly`,
   with GetObject, GetBucketLocation and ListBucket. Apply #262 to this new
   policy too. The original `readonly` S3 permissions remain unchanged.
-- Pin the upstream SDK to `v7.3.1-0.20260909183557-78bfa91607c2`. Relative to
+- Pin the upstream SDK to `v7.3.1-0.20260910142817-60bd07042d49`. Relative to
   the previous `0e78d3f18efe` pin, it contains configurable upload limits
   ([#2299](https://github.com/minio/minio-go/pull/2299)), Content-Type in
-  streaming SignedHeaders ([#2301](https://github.com/minio/minio-go/pull/2301))
-  and caller TLS trust on RDMA ([#2302](https://github.com/minio/minio-go/pull/2302)).
+  streaming SignedHeaders ([#2301](https://github.com/minio/minio-go/pull/2301)),
+  caller TLS trust on RDMA ([#2302](https://github.com/minio/minio-go/pull/2302)),
+  and consistent listing checksums and optional restore status
+  ([#2303](https://github.com/minio/minio-go/pull/2303)).
 
 ## Breaking authorization compatibility
 
@@ -55,7 +57,7 @@ rollback limits.
 
 | Upstream work | SILO decision |
 | --- | --- |
-| #265, x/crypto v0.56.0 | Already selected; no additional version bump. |
+| #265, x/crypto v0.56.0 | Superseded by v0.57.0 in the Go dependency refresh for v3.14.0. |
 | #230, RNG subkey initialization | Already fixed locally. |
 | #226, exact condition key lookup | Already fixed locally. |
 | #242, xtime.Duration JSON marshaling | Already implemented locally. |
