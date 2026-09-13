@@ -22,6 +22,14 @@ and `minio/minio-go` through
   and consistent listing checksums and optional restore status
   ([#2303](https://github.com/minio/minio-go/pull/2303)).
 
+## Release status
+
+These changes shipped in [v3.14.0](https://github.com/pgsty/silo-pkg/releases/tag/v3.14.0).
+The matching Server and Console changes are on their maintained main branches.
+As of 2026-09-13, Server 20260903 and Console v2.4.0 are still the latest
+published application versions and do not include the password split.
+See the [component matrix](https://silo.pgsty.com/compatibility/versions/).
+
 ## Breaking authorization compatibility
 
 Adopting #262 changes existing policy semantics; it is independent of updating
