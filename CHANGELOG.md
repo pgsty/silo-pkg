@@ -1,5 +1,22 @@
 # Changelog
 
+## v3.14.1 — 2026-09-16
+
+[GitHub release](https://github.com/pgsty/silo-pkg/releases/tag/v3.14.1) ·
+[Changes since v3.14.0](https://github.com/pgsty/silo-pkg/compare/v3.14.0...v3.14.1)
+
+- Pin upstream minio-go to `v7.3.1-0.20260915093545-32e1f32cb176`, fixing
+  CopyObject responses that report an S3 error inside an HTTP 200 response.
+  The SDK now retries and reports the error instead of returning success.
+- Update JWX from v3.2.0 to v3.3.0, which JSON-escapes custom claim, header
+  and JWK field names on output (GHSA-4cf7-xm37-g63h). Its test dependency
+  advances testify to v1.12.1.
+- Migrate the lint configuration to `gomodguard_v2` while retaining
+  golangci-lint v2.13.1.
+- Retain the Go 1.26 compatibility floor, Go 1.27.1 toolchain and
+  go-systemd v22.6.0 NetBSD compatibility replacement. Public Go signatures
+  and the password-policy semantics introduced in v3.14.0 are unchanged.
+
 ## v3.14.0 — 2026-09-13
 
 Published from `827f8109ff11bf6239a35d8d6d137cb5738539c3`.

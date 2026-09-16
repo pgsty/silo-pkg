@@ -5,10 +5,10 @@ collection of common packages used in MinIO projects. It exists so the
 community MinIO fork has somewhere to take fixes that upstream, now driven by a
 closed product, will not carry.
 
-Current release: [v3.14.0](https://github.com/pgsty/silo-pkg/releases/tag/v3.14.0).
+Current release: [v3.14.1](https://github.com/pgsty/silo-pkg/releases/tag/v3.14.1).
 Read the [changelog](CHANGELOG.md) and [component version matrix](https://silo.pgsty.com/compatibility/versions/)
-before adopting its password-authorization changes; the matching Server and
-Console source is not yet a published application release as of 2026-09-13.
+before adopting the password-authorization changes introduced in v3.14.0.
+The matrix tracks which matching Server and Console releases include them.
 
 ## Using it
 
@@ -16,7 +16,7 @@ Import it directly. This repository declares `module github.com/pgsty/silo-pkg/v
 so a consumer requires it by name and needs no `replace` directive:
 
 ```go
-require github.com/pgsty/silo-pkg/v3 v3.14.0
+require github.com/pgsty/silo-pkg/v3 v3.14.1
 ```
 
 ```go

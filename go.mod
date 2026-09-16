@@ -19,10 +19,10 @@ require (
 	github.com/go-ldap/ldap/v3 v3.4.14
 	github.com/go-openapi/swag/conv v0.29.1
 	github.com/golang-jwt/jwt/v4 v4.5.2
-	github.com/lestrrat-go/jwx/v3 v3.2.0
+	github.com/lestrrat-go/jwx/v3 v3.3.0
 	github.com/mattn/go-colorable v0.1.15
 	github.com/mattn/go-isatty v0.0.24
-	github.com/minio/minio-go/v7 v7.3.1-0.20260910142817-60bd07042d49
+	github.com/minio/minio-go/v7 v7.3.1-0.20260915093545-32e1f32cb176
 	github.com/minio/mux v1.10.1
 	github.com/rjeczalik/notify v0.9.3
 	github.com/tinylib/msgp v1.6.4
