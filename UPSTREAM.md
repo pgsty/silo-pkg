@@ -1,9 +1,10 @@
-# Upstream review: 2026-09-13
+# Upstream review
 
-Reviewed `minio/pkg` through
+The 2026-09-13 `minio/pkg` review covers
 [`657d87e88168`](https://github.com/minio/pkg/commit/657d87e881680db68e3a9f9286569788651c968e)
-and `minio/minio-go` through
-[`60bd07042d49`](https://github.com/minio/minio-go/commit/60bd07042d49a40c4155d3fbde3d390f39867a1e).
+and remains the basis for the package decisions below. The 2026-09-16
+`minio/minio-go` review advances the SDK through
+[`32e1f32cb176`](https://github.com/minio/minio-go/commit/32e1f32cb176a611dbed3b37c15fda8c2d9ccf36).
 
 ## Adopted
 
@@ -14,7 +15,14 @@ and `minio/minio-go` through
 - [pkg #233](https://github.com/minio/pkg/pull/233): add `consolereadonly`,
   with GetObject, GetBucketLocation and ListBucket. Apply #262 to this new
   policy too. The original `readonly` S3 permissions remain unchanged.
-- Pin the upstream SDK to `v7.3.1-0.20260910142817-60bd07042d49`. Relative to
+- Pin the upstream SDK to `v7.3.1-0.20260915093545-32e1f32cb176` for v3.14.1.
+  [minio-go #2306](https://github.com/minio/minio-go/pull/2306) retries and
+  reports CopyObject errors embedded in HTTP 200 responses instead of
+  returning success. The other commit since the v3.14.0 pin fixes Windows CI.
+- Update JWX to [v3.3.0](https://github.com/lestrrat-go/jwx/releases/tag/v3.3.0),
+  which escapes custom claim, header and JWK field names on JSON output
+  (GHSA-4cf7-xm37-g63h).
+- v3.14.0 pinned the SDK to `v7.3.1-0.20260910142817-60bd07042d49`. Relative to
   the previous `0e78d3f18efe` pin, it contains configurable upload limits
   ([#2299](https://github.com/minio/minio-go/pull/2299)), Content-Type in
   streaming SignedHeaders ([#2301](https://github.com/minio/minio-go/pull/2301)),
@@ -24,7 +32,9 @@ and `minio/minio-go` through
 
 ## Release status
 
-These changes shipped in [v3.14.0](https://github.com/pgsty/silo-pkg/releases/tag/v3.14.0).
+The policy changes shipped in [v3.14.0](https://github.com/pgsty/silo-pkg/releases/tag/v3.14.0).
+The CopyObject and JWX dependency fixes are included in
+[v3.14.1](https://github.com/pgsty/silo-pkg/releases/tag/v3.14.1).
 The matching Server and Console changes are on their maintained main branches.
 As of 2026-09-13, Server 20260903 and Console v2.4.0 are still the latest
 published application versions and do not include the password split.
