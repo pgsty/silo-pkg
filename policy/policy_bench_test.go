@@ -92,6 +92,29 @@ func BenchmarkIsAllowed(b *testing.B) {
 			args: args,
 		},
 		{
+			// Every statement matches the action but not the bucket.
+			name: "ManyBucketGrants",
+			policy: setupPolicy(func() []Statement {
+				stmts := make([]Statement, 100)
+				for i := range stmts {
+					stmts[i] = setupStatement(
+						[]string{"s3:GetObject", "s3:PutObject"},
+						[]string{fmt.Sprintf("arn:aws:s3:::bucket%d/*", i)},
+						"Allow",
+						nil,
+					)
+				}
+				stmts = append(stmts, setupStatement(
+					[]string{"s3:GetObject"},
+					[]string{"arn:aws:s3:::test-bucket/*"},
+					"Allow",
+					nil,
+				))
+				return stmts
+			}()),
+			args: args,
+		},
+		{
 			name: "DenyRule",
 			policy: setupPolicy([]Statement{
 				setupStatement(

@@ -18,6 +18,8 @@
 package policy
 
 import (
+	"strings"
+
 	"github.com/pgsty/silo-pkg/v3/policy/condition"
 	"github.com/pgsty/silo-pkg/v3/wildcard"
 )
@@ -425,6 +427,13 @@ var AdminActionsWithResource = map[AdminAction]struct{}{
 
 // HasResource reports whether this admin action operates on a bucket resource.
 func (action AdminAction) HasResource() bool {
+	if _, ok := AdminActionsWithResource[action]; ok {
+		return true
+	}
+	if !wildcard.Has(string(action)) {
+		// No wildcards, so only an exact match counts.
+		return false
+	}
 	for a := range AdminActionsWithResource {
 		if action.Match(a) {
 			return true
@@ -440,12 +449,39 @@ func (action AdminAction) Match(a AdminAction) bool {
 
 // IsValid - checks if action is valid or not.
 func (action AdminAction) IsValid() bool {
+	if _, ok := SupportedAdminActions[action]; ok {
+		return true
+	}
+	s := string(action)
+	star := strings.IndexAny(s, "*?")
+	if star < 0 {
+		// No wildcards, so only an exact match counts.
+		return false
+	}
+	if !canMatchPrefix(s[:star], adminActionPrefix) {
+		// This runs on every request, so don't scan the whole set for
+		// patterns like "s3:*" that can never be admin actions.
+		return false
+	}
 	for supAction := range SupportedAdminActions {
 		if action.Match(supAction) {
 			return true
 		}
 	}
 	return false
+}
+
+// Every supported admin action starts with this.
+const adminActionPrefix = "admin:"
+
+// canMatchPrefix reports whether a pattern whose text before the first
+// wildcard is head can match a string starting with prefix. Either one may
+// be longer: "adm*" and "admin:Heal*" both pass.
+func canMatchPrefix(head, prefix string) bool {
+	if len(head) > len(prefix) {
+		return strings.HasPrefix(head, prefix)
+	}
+	return strings.HasPrefix(prefix, head)
 }
 
 func createAdminActionConditionKeyMap() map[Action]condition.KeySet {
