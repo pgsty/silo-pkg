@@ -185,8 +185,9 @@ var DefaultPolicies = []struct {
 	},
 
 	// InfraAdmin - provides infrastructure and server management access
-	// (config, pools, healing, tiers, batch jobs) but no
-	// IAM or S3 data access.
+	// (config, pools, healing, tiers, and batch-job administration).
+	// It grants no IAM or S3 data actions. SILO must separately authorize
+	// a batch job's data operations as its submitter.
 	{
 		Name: "infraAdmin",
 		Definition: Policy{
