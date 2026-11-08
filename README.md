@@ -7,13 +7,15 @@ collection of common packages used in MinIO projects. It exists so the
 community MinIO fork has somewhere to take fixes that upstream, now driven by a
 closed product, will not carry.
 
-Version: **v3.15.2**. See [GitHub releases](https://github.com/pgsty/silo-pkg/releases) for publication status.
-This maintenance release requires **Go 1.27.3** and updates minio-go to upstream
-commit `320af050c445`, accepting HTTP 204 when removing bucket replication.
-It preserves policy semantics and CLI output compatibility.
-The published Server 20261026, mcli 20261026, and Console v2.5.1 all select
-v3.15.2. This source-only module has no binary or image; consumers must
-update their dependency and rebuild to adopt it.
+Version: **v3.16.0**. See [GitHub releases](https://github.com/pgsty/silo-pkg/releases) for publication status.
+This maintenance release requires **Go 1.27.3** and updates JOSE, networking,
+CPU detection, and YAML dependencies. It includes the go-jose security fixes,
+corrects XSAVE/OSXSAVE detection on x86, and preserves literal `<<` YAML keys
+when saving and loading configuration. Public package APIs and policy semantics
+remain compatible with v3.15.2.
+This source-only module has no binary or image; Server, Console, and mcli must
+adopt v3.16.0 and rebuild independently. Their existing releases are not changed
+by this library release.
 Read the [changelog](CHANGELOG.md) and [component version matrix](https://silo.pgsty.com/compatibility/versions/)
 before adopting the password-authorization changes introduced in v3.14.0.
 The matrix tracks which matching Server and Console releases include them.
@@ -24,7 +26,7 @@ Import it directly. This repository declares `module github.com/pgsty/silo-pkg/v
 so a consumer requires it by name and needs no `replace` directive:
 
 ```go
-require github.com/pgsty/silo-pkg/v3 v3.15.2
+require github.com/pgsty/silo-pkg/v3 v3.16.0
 ```
 
 ```go

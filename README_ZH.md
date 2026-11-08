@@ -6,16 +6,16 @@ Pigsty 维护的 [minio/pkg](https://github.com/minio/pkg) 分支，为 SILO Ser
 
 ## 当前版本
 
-**v3.15.2** 要求 **Go 1.27.3**，将 minio-go 更新至上游提交 `320af050c445`，修复删除桶复制配置时误将 HTTP 204 当作失败的问题，保留策略语义与 CLI 输出兼容性。发布状态见 [GitHub Releases](https://github.com/pgsty/silo-pkg/releases)。完整变更见 [CHANGELOG.md](CHANGELOG.md)。
+**v3.16.0** 要求 **Go 1.27.3**，更新 JOSE、网络、CPU 检测与 YAML 依赖，纳入 go-jose 安全修复，修正 x86 XSAVE/OSXSAVE 检测，并使配置读写保留字面量 `<<` YAML 键。公开包 API 与策略语义保持和 v3.15.2 兼容。发布状态见 [GitHub Releases](https://github.com/pgsty/silo-pkg/releases)。完整变更见 [CHANGELOG.md](CHANGELOG.md)。
 
-已发布的 Server 20261026、mcli 20261026 与 Console v2.5.1 均选用 v3.15.2。本模块仅发布源码，没有独立二进制或镜像，消费方须重新构建。组件的独立发布状态见[版本矩阵](https://silo.pgsty.com/zh/compatibility/versions/)。
+本模块仅发布源码，没有独立二进制或镜像。Server、Console 与 mcli 需分别采用 v3.16.0 并重新构建；本次库发布不会更新这些组件的既有发布制品。组件的独立发布状态见[版本矩阵](https://silo.pgsty.com/zh/compatibility/versions/)。
 
 ## 使用方法
 
 直接声明模块，无需 `replace`：
 
 ```go
-require github.com/pgsty/silo-pkg/v3 v3.15.2
+require github.com/pgsty/silo-pkg/v3 v3.16.0
 ```
 
 ```go

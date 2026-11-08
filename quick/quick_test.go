@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -270,6 +271,28 @@ directories:
 
 	if !reflect.DeepEqual(saveMe, loadMe) {
 		t.Fatalf("Expected %v, got %v", saveMe, loadMe)
+	}
+}
+
+func TestYAMLLiteralMergeKeyRoundTrip(t *testing.T) {
+	type settings struct {
+		Version string
+		Values  map[string]string
+	}
+	want := settings{
+		Version: "1",
+		Values:  map[string]string{"<<": "literal key", "value": "<<"},
+	}
+	filename := filepath.Join(t.TempDir(), "config.yaml")
+	if err := SaveConfig(&want, filename, nil); err != nil {
+		t.Fatal(err)
+	}
+	var got settings
+	if _, err := LoadConfig(filename, nil, &got); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("configuration changed after YAML round trip: got %#v, want %#v", got, want)
 	}
 }
 

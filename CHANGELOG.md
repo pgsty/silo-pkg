@@ -1,5 +1,25 @@
 # Changelog
 
+## v3.16.0 — 2026-11-08
+
+- Update go-jose/v4 from v4.1.6 to v4.1.9, including the five security fixes
+  in [v4.1.7](https://github.com/go-jose/go-jose/releases/tag/v4.1.7) and the
+  subsequent OpaqueSigner and unsupported-key error fixes. These are dependency
+  fixes; their applicability depends on the consuming application's use of JOSE.
+- Publish the networking dependency updates already on main: x/net v0.62.0 and
+  x/crypto `v0.58.1-0.20261009181718-2f1f834330b2`, replacing v0.61.0 and
+  v0.58.0 respectively.
+- Update cpuid/v2 to v2.4.2 to correct XSAVE/OSXSAVE feature detection, and
+  go.yaml.in/yaml/v3 to v3.0.6 to quote literal `<<` keys instead of emitting
+  ambiguous YAML merge keys. Cover configuration save/load with a regression test.
+- Clarify that the built-in infraAdmin policy includes batch-job administration.
+  Public package APIs, policy formats and authorization decisions remain compatible.
+- Retain Go 1.27.3, the existing upstream minio-go commit `320af050c445`,
+  go-humanize v1.0.1, go-runewidth v0.0.29, and the go-systemd v22.6.0
+  compatibility replacement. Consumers must retain their own required replacements.
+- This is a source-only module release. Server, Console and mcli must select
+  v3.16.0 and rebuild; this release does not publish their binaries or images.
+
 ## v3.15.2 — 2026-10-26
 
 - Update upstream minio-go to `v7.4.2-0.20261025165926-320af050c445`.
