@@ -18,6 +18,7 @@
 package policy
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/binary"
@@ -560,15 +561,34 @@ func ParseConfig(reader io.Reader) (*Policy, error) {
 
 // ParseConfigStrict parses and validates with strict rules. Use this
 // when the server is creating or updating policies — it rejects
-// constructs that Validate allows for backward compatibility.
+// constructs that Validate allows for backward compatibility, as well
+// as non-object JSON values, trailing tokens, and unknown fields that
+// Policy.UnmarshalJSON would otherwise ignore.
 func ParseConfigStrict(reader io.Reader) (*Policy, error) {
-	var iamp Policy
-
-	decoder := json.NewDecoder(reader)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&iamp); err != nil {
+	data, err := io.ReadAll(reader)
+	if err != nil {
 		return nil, Errorf("%w", err)
 	}
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 || data[0] != '{' || !json.Valid(data) {
+		return nil, Errorf("policy document must be a JSON object")
+	}
+
+	type subPolicy Policy
+	var sp subPolicy
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&sp); err != nil {
+		return nil, Errorf("%w", err)
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		return nil, Errorf("policy document must contain a single JSON object")
+	}
+
+	iamp := Policy(sp)
+	iamp.dropDuplicateStatements()
+	iamp.updateActionIndex()
 
 	return &iamp, iamp.ValidateStrict()
 }

@@ -18,7 +18,9 @@
 package policy
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 
 	"github.com/minio/minio-go/v7/pkg/set"
 	"github.com/pgsty/silo-pkg/v3/wildcard"
@@ -73,19 +75,31 @@ func (p *Principal) UnmarshalJSON(data []byte) error {
 	type subPrincipal Principal
 	var sp subPrincipal
 
-	if err := json.Unmarshal(data, &sp); err != nil {
-		var s string
-		if err = json.Unmarshal(data, &s); err != nil {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) > 0 && trimmed[0] == '{' {
+		decoder := json.NewDecoder(bytes.NewReader(trimmed))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&sp); err != nil {
 			return err
 		}
-
-		if s != "*" {
-			return Errorf("invalid principal '%v'", s)
+		var extra any
+		if err := decoder.Decode(&extra); err != io.EOF {
+			return Errorf("unexpected trailing tokens in principal")
 		}
-
-		sp.AWS = set.CreateStringSet("*")
+		*p = Principal(sp)
+		return nil
 	}
 
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	if s != "*" {
+		return Errorf("invalid principal '%v'", s)
+	}
+
+	sp.AWS = set.CreateStringSet("*")
 	*p = Principal(sp)
 
 	return nil

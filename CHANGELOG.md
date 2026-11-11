@@ -1,5 +1,20 @@
 # Changelog
 
+## v3.16.1 — 2026-11-12
+
+- Reject non-object JSON inputs, trailing tokens, and unknown top-level,
+  statement, or principal fields in `policy.ParseConfigStrict` and
+  `policy.ParseBucketPolicyConfig` so custom `UnmarshalJSON` decoders cannot
+  turn misspelled fields into empty policies or drop statement conditions.
+- Require Go 1.27.4 and update the matching CI baseline.
+- Update x/sys, x/term, x/text and x/oauth2, grpc-gateway to v2.33.0,
+  gRPC to v1.85.0, and go-humanize to v1.1.0. Select the API definitions
+  required by grpc-gateway while retaining the existing RPC definitions.
+- Preserve the verified crypto and minio-go commits, terminal widths, and
+  the go-systemd v22.6.0 portability replacement.
+- This is a source-only module release. Server, Console and mcli must select
+  v3.16.1 and rebuild; this release does not publish their binaries or images.
+
 ## v3.16.0 — 2026-11-08
 
 - Update go-jose/v4 from v4.1.6 to v4.1.9, including the five security fixes

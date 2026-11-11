@@ -7,14 +7,14 @@ collection of common packages used in MinIO projects. It exists so the
 community MinIO fork has somewhere to take fixes that upstream, now driven by a
 closed product, will not carry.
 
-Version: **v3.16.0**. See [GitHub releases](https://github.com/pgsty/silo-pkg/releases) for publication status.
-This maintenance release requires **Go 1.27.3** and updates JOSE, networking,
-CPU detection, and YAML dependencies. It includes the go-jose security fixes,
-corrects XSAVE/OSXSAVE detection on x86, and preserves literal `<<` YAML keys
-when saving and loading configuration. Public package APIs and policy semantics
-remain compatible with v3.15.2.
+Version: **v3.16.1**. See [GitHub releases](https://github.com/pgsty/silo-pkg/releases) for publication status.
+This maintenance and policy-hardening release requires **Go 1.27.4**, rejects
+non-object JSON inputs, trailing tokens, and unknown fields in strict IAM and
+bucket policy parsers, and updates x/sys, x/term, x/text, x/oauth2, gRPC,
+grpc-gateway, and go-humanize dependencies while retaining the verified crypto,
+minio-go, and NetBSD portability selections.
 This source-only module has no binary or image; Server, Console, and mcli must
-adopt v3.16.0 and rebuild independently. Their existing releases are not changed
+adopt v3.16.1 and rebuild independently. Their existing releases are not changed
 by this library release.
 Read the [changelog](CHANGELOG.md) and [component version matrix](https://silo.pgsty.com/compatibility/versions/)
 before adopting the password-authorization changes introduced in v3.14.0.
@@ -26,7 +26,7 @@ Import it directly. This repository declares `module github.com/pgsty/silo-pkg/v
 so a consumer requires it by name and needs no `replace` directive:
 
 ```go
-require github.com/pgsty/silo-pkg/v3 v3.16.0
+require github.com/pgsty/silo-pkg/v3 v3.16.1
 ```
 
 ```go
@@ -48,7 +48,7 @@ the old path, but pin the new one.
 
 ## Go and TLS compatibility
 
-The library requires Go 1.27.3. Runtime
+The library requires Go 1.27.4. Runtime
 defaults depend on the consuming application's Go version and `GODEBUG`, not
 just this library's `go.mod`. The web-environment client leaves TLS key exchange
 at Go defaults; LDAP and OIDC helpers also preserve caller-supplied TLS settings.

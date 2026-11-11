@@ -6,16 +6,16 @@ Pigsty 维护的 [minio/pkg](https://github.com/minio/pkg) 分支，为 SILO Ser
 
 ## 当前版本
 
-**v3.16.0** 要求 **Go 1.27.3**，更新 JOSE、网络、CPU 检测与 YAML 依赖，纳入 go-jose 安全修复，修正 x86 XSAVE/OSXSAVE 检测，并使配置读写保留字面量 `<<` YAML 键。公开包 API 与策略语义保持和 v3.15.2 兼容。发布状态见 [GitHub Releases](https://github.com/pgsty/silo-pkg/releases)。完整变更见 [CHANGELOG.md](CHANGELOG.md)。
+**v3.16.1** 要求 **Go 1.27.4**，在严格 IAM 与桶策略解析中拒绝非对象 JSON 输入、尾部多余 token 及未知字段，防止拼写错误静默退化为空策略或丢失语句条件，并更新 x/sys、x/term、x/text、x/oauth2、gRPC、grpc-gateway 与 go-humanize 依赖，同时保留已验证的加密、minio-go 与 NetBSD 兼容选择。发布状态见 [GitHub Releases](https://github.com/pgsty/silo-pkg/releases)。完整变更见 [CHANGELOG.md](CHANGELOG.md)。
 
-本模块仅发布源码，没有独立二进制或镜像。Server、Console 与 mcli 需分别采用 v3.16.0 并重新构建；本次库发布不会更新这些组件的既有发布制品。组件的独立发布状态见[版本矩阵](https://silo.pgsty.com/zh/compatibility/versions/)。
+本模块仅发布源码，没有独立二进制或镜像。Server、Console 与 mcli 需分别采用 v3.16.1 并重新构建；本次库发布不会更新这些组件的既有发布制品。组件的独立发布状态见[版本矩阵](https://silo.pgsty.com/zh/compatibility/versions/)。
 
 ## 使用方法
 
 直接声明模块，无需 `replace`：
 
 ```go
-require github.com/pgsty/silo-pkg/v3 v3.16.0
+require github.com/pgsty/silo-pkg/v3 v3.16.1
 ```
 
 ```go
@@ -28,7 +28,7 @@ import "github.com/pgsty/silo-pkg/v3/policy"
 
 ## Go 与 TLS
 
-库要求 Go 1.27.3 或更新版本。运行时行为由消费方应用的 Go 版本与 `GODEBUG` 决定，不仅取决于本库的 `go.mod`。Web 环境客户端沿用 Go 默认密钥交换，LDAP/OIDC 辅助函数保留调用方提供的 TLS 配置。
+库要求 Go 1.27.4 或更新版本。运行时行为由消费方应用的 Go 版本与 `GODEBUG` 决定，不仅取决于本库的 `go.mod`。Web 环境客户端沿用 Go 默认密钥交换，LDAP/OIDC 辅助函数保留调用方提供的 TLS 配置。
 
 默认 TLS 配置下，`GODEBUG=tlsmlkem=0` 关闭混合密钥交换；`GODEBUG=tlssecpmlkem=0` 只关闭 SecP 混合组，保留 X25519MLKEM768。两者都不会关闭证书验证。
 

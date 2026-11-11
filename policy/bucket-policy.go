@@ -18,6 +18,7 @@
 package policy
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 )
@@ -167,15 +168,34 @@ func (policy BucketPolicy) Validate(bucketName string) error {
 
 // ParseBucketPolicyConfig - parses data in given reader to Policy.
 func ParseBucketPolicyConfig(reader io.Reader, bucketName string) (*BucketPolicy, error) {
-	var policy BucketPolicy
-
-	decoder := json.NewDecoder(reader)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&policy); err != nil {
+	data, err := io.ReadAll(reader)
+	if err != nil {
 		return nil, Errorf("%w", err)
 	}
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 || data[0] != '{' || !json.Valid(data) {
+		return nil, Errorf("bucket policy document must be a JSON object")
+	}
 
-	err := policy.Validate(bucketName)
+	type subPolicy BucketPolicy
+	var sp subPolicy
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&sp); err != nil {
+		return nil, Errorf("%w", err)
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		return nil, Errorf("bucket policy document must contain a single JSON object")
+	}
+
+	policy := BucketPolicy(sp)
+	if err := policy.isValid(); err != nil {
+		return nil, Errorf("%w", err)
+	}
+	policy.dropDuplicateStatements()
+
+	err = policy.Validate(bucketName)
 	return &policy, err
 }
 
